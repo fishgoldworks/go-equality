@@ -39,6 +39,8 @@ var checkLooseEquality = require("./checkLooseEquality");
  * isLooseEqual(Symbol("abc"), Symbol("abc"));
  * @since 1.0.0
  */
-module.exports = function (value, other) {
-    return checkLooseEquality(value, other);
-};
+function isLooseEqual(value, other) {
+  return checkLooseEquality(value, other);
+}
+
+module.exports = isLooseEqual;

@@ -1,22 +1,27 @@
 var areEqualObjects = require("./areEqualObjects");
 
-module.exports = function checkLooseEquality(value, other, stack) {
-    if (value == other) {
-        return true;
-    } else if (value instanceof Object) {
+function checkLooseEquality(value, other, stack) {
+  // JS loose equality (primitives + same references)
+  if (value == other) {
+    return true;
+  }
 
-        if (other instanceof Object) {
+  // Both are object-like -> structural comparison
+  if (value instanceof Object && other instanceof Object) {
+    return areEqualObjects(value, other, stack || [], checkLooseEquality);
+  }
 
-            return areEqualObjects(value, other, stack || [], checkLooseEquality, false);
-        }
-    } else if (
-            (typeof value === "number" || value instanceof Number) &&
-            (typeof other === "number" || other instanceof Number) &&
-            isNaN(value) &&
-            isNaN(other)
-            ) {
-        return true;
-    }
+  // NaN (including boxed Number)
+  if (
+          (typeof value === "number" || value instanceof Number) &&
+          (typeof other === "number" || other instanceof Number) &&
+          isNaN(value) &&
+          isNaN(other)
+          ) {
+    return true;
+  }
 
-    return false;
-};
+  return false;
+}
+
+module.exports = checkLooseEquality;

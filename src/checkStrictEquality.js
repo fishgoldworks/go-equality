@@ -1,16 +1,22 @@
 var areEqualObjects = require("./areEqualObjects");
 
-module.exports = function checkStrictEquality(value, other, stack) {
-    if (value === other) {
-        return true;
-    } else if (value instanceof Object) {
+function checkStrictEquality(value, other, stack) {
+  // Strict equality for primitives and identical references
+  if (value === other) {
+    return true;
+  }
 
-        if (other instanceof Object) {
-            return areEqualObjects(value, other, stack || [], checkStrictEquality, true);
-        }
+  // Deep compare objects via areEqualObjects using strict semantics
+  if (value instanceof Object && other instanceof Object) {
+    return areEqualObjects(value, other, stack || [], checkStrictEquality);
+  }
 
-    } else if (typeof value === "number" && typeof other === "number" && isNaN(value) && isNaN(other)) {
-        return true;
-    }
-    return false;
-};
+  // Treat NaN as strictly equal to NaN (custom semantics)
+  if (typeof value === "number" && typeof other === "number" && isNaN(value) && isNaN(other)) {
+    return true;
+  }
+
+  return false;
+}
+
+module.exports = checkStrictEquality;

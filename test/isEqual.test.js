@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2022 Michael Ko
- * 
+ *
  * This work is licensed under the GNU LGPLv3 license.
  * <https://www.gnu.org/licenses/lgpl-3.0.en.html>.
  */
@@ -13,91 +13,460 @@ var assert = require("chai").assert;
 var isEqual = require("../src/isEqual");
 var data = require("./data/testData");
 
-
 suite("#isEqual", function () {
+  // ---------------------------------------------------------------------
+  // Primitive values
+  // ---------------------------------------------------------------------
 
-    test("equal primitives", function () {
-        assert.equal(isEqual(undefined, undefined), true);
-        assert.equal(isEqual(null, null), true);
-        assert.equal(isEqual(true, true), true);
-        assert.equal(isEqual(1, 1), true);
-        assert.equal(isEqual(-0, +0), true);
-        assert.equal(isEqual(Infinity, Infinity), true);
-        assert.equal(isEqual(NaN, NaN), true);
-        assert.equal(isEqual("abc", "abc"), true);
-        assert.equal(isEqual(BigInt(1), BigInt(1)), true);
-        assert.equal(isEqual(data.symbol1, data.symbol1), true);
-    });
+  test("returns true for equal primitive values", function () {
+    assert.isTrue(isEqual(undefined, undefined));
+    assert.isTrue(isEqual(null, null));
+    assert.isTrue(isEqual(true, true));
+    assert.isTrue(isEqual(false, false));
+    assert.isTrue(isEqual(1, 1));
+    assert.isTrue(isEqual(-0, +0));
+    assert.isTrue(isEqual(Infinity, Infinity));
+    assert.isTrue(isEqual(NaN, NaN));
+    assert.isTrue(isEqual("abc", "abc"));
+    assert.isTrue(isEqual(BigInt(1), BigInt(1)));
+    assert.isTrue(isEqual(data.symbol1, data.symbol1));
+  });
 
-    test("not equal primitives", function () {
-        assert.equal(isEqual(undefined, null), false);
-        assert.equal(isEqual(null, undefined), false);
-        assert.equal(isEqual(true, false), false);
-        assert.equal(isEqual(false, 0), false);
-        assert.equal(isEqual(true, 1), false);
-        assert.equal(isEqual(true, "true"), false);
-        assert.equal(isEqual(0, 0.00000000000001), false);
-        assert.equal(isEqual(1, BigInt(1)), false);
-        assert.equal(isEqual(1, "1"), false);
-        assert.equal(isEqual(0, ""), false);
-        assert.equal(isEqual("", " "), false);
-        assert.equal(isEqual(data.symbol1, data.symbol2), false);
-    });
+  test("returns false for non-equal primitive values", function () {
+    assert.isFalse(isEqual(undefined, null));
+    assert.isFalse(isEqual(null, undefined));
+    assert.isFalse(isEqual(true, false));
+    assert.isFalse(isEqual(false, 0));
+    assert.isFalse(isEqual(true, 1));
+    assert.isFalse(isEqual(true, "true"));
+    assert.isFalse(isEqual(0, 0.00000000000001));
+    assert.isFalse(isEqual(1, BigInt(1)));
+    assert.isFalse(isEqual(1, "1"));
+    assert.isFalse(isEqual(0, ""));
+    assert.isFalse(isEqual("", " "));
+    assert.isFalse(isEqual(data.symbol1, data.symbol2));
+  });
 
-    test("equal objects", function () {
-        var obj = {};
-        assert.equal(isEqual(obj, obj), true);
-        assert.equal(isEqual(data.entity1, data.entity2), true);
-        assert.equal(isEqual(new Boolean(true), new Boolean(true)), true);
-        assert.equal(isEqual(new Number(1), new Number(1)), true);
-        assert.equal(isEqual(new String("abc"), new String("abc")), true);
-        assert.equal(isEqual([], []), true);
-        assert.equal(isEqual([1, 2, 3], [1, 2, 3]), true);
-        assert.equal(isEqual([[false], [1, 2], ["a", "b", "c"]], [[false], [1, 2], ["a", "b", "c"]]), true);
-        assert.equal(isEqual({}, {}), true);
-        assert.equal(isEqual({a: 1, b: "abc", c: true}, {a: 1, b: "abc", c: true}), true);
-        assert.equal(isEqual({a: 1, b: "abc", c: true}, {b: "abc", a: 1, c: true}), true);
-        assert.equal(isEqual({a: 1, b: "abc", c: true}, {a: new Number(1), b: new String("abc"), c: new Boolean(true)}), true);
-        assert.equal(isEqual([{a: 1}, {b: true}], [{a: new Number(1)}, {b: new Boolean(true)}]), true);
-        assert.equal(isEqual(data.fn1, data.fn1), true);
-        assert.equal(isEqual(data.entity1, data.entity2), true);
-        assert.equal(isEqual(data.entity2, data.entity1), true);
-        assert.equal(isEqual(data.cyclic1, data.cyclic2), true);
-        assert.equal(isEqual(data.cyclic4, data.cyclic5), true);
-    });
+  // ---------------------------------------------------------------------
+  // Boxed primitives & primitive/boxed combinations
+  // ---------------------------------------------------------------------
 
-    test("not equal objects", function () {
-        assert.equal(isEqual([], [undefined]), false);
-        assert.equal(isEqual([1, 2, 3], [3, 2, 1]), false);
-        assert.equal(isEqual({}, {a: undefined}), false);
-        assert.equal(isEqual({a: null}, {a: undefined}), false);
-        assert.equal(isEqual({a: 1}, {b: 1}), false);
-        assert.equal(isEqual(function () {}, function () {}), false);
-        assert.equal(isEqual(data.entity1, data.entity3), false);
-        assert.equal(isEqual(data.entity3, data.entity1), false);
-        assert.equal(isEqual(data.item1, data.entity1), false);
-        assert.equal(isEqual(data.item1, {name: 1}), false);
-        assert.equal(isEqual(data.fn1, data.fn2), false);
-        assert.equal(isEqual(data.fn1, data.fn3), false);
-        assert.equal(isEqual(data.cyclic1, data.cyclic3), false);
-        assert.equal(isEqual(data.cyclic4, data.cyclic6), false);
-        assert.equal(isEqual(data.cyclic5, data.cyclic6), false);
+  test("returns true for equal boxed primitive objects", function () {
+    assert.isTrue(isEqual(new Boolean(true), new Boolean(true)));
+    assert.isTrue(isEqual(new Number(1), new Number(1)));
+    assert.isTrue(isEqual(new String("abc"), new String("abc")));
+    // boxed NaN vs boxed NaN should also be considered equal
+    assert.isTrue(isEqual(new Number(NaN), new Number(NaN)));
+  });
 
-    });
+  test("returns false for non-equal boxed primitive objects", function () {
+    // different underlying primitive values
+    assert.isFalse(isEqual(new Number(1), new Number(2)));
+    assert.isFalse(isEqual(new String("1"), new String("2")));
+    assert.isFalse(isEqual(new Boolean(true), new Boolean(false)));
 
-    test("equal primitive-object values", function () {
-        assert.equal(isEqual(1, new Number(1)), true);
-        assert.equal(isEqual(NaN, new Number(NaN)), true);
-        assert.equal(isEqual("abc", new String("abc")), true);
-        assert.equal(isEqual(true, new Boolean(true)), true);
-    });
+    // boxed NaN vs boxed non-NaN
+    assert.isFalse(isEqual(new Number(NaN), new Number(1)));
+    assert.isFalse(isEqual(new Number(NaN), new Number(Infinity)));
 
-    test("not equal primitive-object values", function () {
-        assert.equal(isEqual(1, new Number(-1)), false);
-        assert.equal(isEqual(1, new String("1")), false);
-        assert.equal(isEqual("", new String(" ")), false);
-        assert.equal(isEqual(true, new Boolean(false)), false);
-        assert.equal(isEqual(true, new String("true")), false);
-        assert.equal(isEqual(false, new Number(0)), false);
-    });
+    // cross-type wrappers
+    assert.isFalse(isEqual(new Number(1), new String("1")));
+    assert.isFalse(isEqual(new Boolean(true), new Number(1)));
+  });
+
+  test("returns true for equal primitive vs boxed primitive values", function () {
+    assert.isTrue(isEqual(1, new Number(1)));
+    assert.isTrue(isEqual(new Number(1), 1));
+
+    assert.isTrue(isEqual(NaN, new Number(NaN)));
+    assert.isTrue(isEqual(new Number(NaN), NaN));
+
+    assert.isTrue(isEqual("abc", new String("abc")));
+    assert.isTrue(isEqual(new String("abc"), "abc"));
+
+    assert.isTrue(isEqual(true, new Boolean(true)));
+    assert.isTrue(isEqual(new Boolean(true), true));
+  });
+
+  test("returns false for non-equal primitive vs boxed primitive values", function () {
+    // number vs Number
+    assert.isFalse(isEqual(1, new Number(-1)));
+    assert.isFalse(isEqual(new Number(-1), 1));
+
+    // string vs String
+    assert.isFalse(isEqual(1, new String("1")));
+    assert.isFalse(isEqual(new String("1"), 1));
+    assert.isFalse(isEqual("", new String(" ")));
+    assert.isFalse(isEqual(new String(" "), ""));
+
+    // boolean vs Boolean
+    assert.isFalse(isEqual(true, new Boolean(false)));
+    assert.isFalse(isEqual(new Boolean(false), true));
+
+    // boolean vs String
+    assert.isFalse(isEqual(true, new String("true")));
+    assert.isFalse(isEqual(new String("true"), true));
+
+    // boolean vs Number
+    assert.isFalse(isEqual(false, new Number(0)));
+    assert.isFalse(isEqual(new Number(0), false));
+
+    // NaN vs boxed non-NaN values
+    assert.isFalse(isEqual(NaN, new Number(1)));
+    assert.isFalse(isEqual(new Number(1), NaN));
+  });
+
+  // ---------------------------------------------------------------------
+  // Plain objects, arrays, functions & circular structures
+  // ---------------------------------------------------------------------
+
+  test("returns true for strictly equal object references", function () {
+    var obj = {};
+    assert.isTrue(isEqual(obj, obj));
+    assert.isTrue(isEqual(data.fn1, data.fn1));
+  });
+
+  test("returns true for deeply equal plain objects and arrays", function () {
+    assert.isTrue(isEqual([], []));
+    assert.isTrue(isEqual([1, 2, 3], [1, 2, 3]));
+    assert.isTrue(
+            isEqual(
+                    [[false], [1, 2], ["a", "b", "c"]],
+                    [[false], [1, 2], ["a", "b", "c"]]
+                    )
+            );
+
+    assert.isTrue(isEqual({}, {}));
+    assert.isTrue(
+            isEqual(
+                    {a: 1, b: "abc", c: true},
+                    {a: 1, b: "abc", c: true}
+            )
+            );
+
+    // property order should not matter
+    assert.isTrue(
+            isEqual(
+                    {a: 1, b: "abc", c: true},
+                    {b: "abc", a: 1, c: true}
+            )
+            );
+
+    // boxed values inside objects/arrays
+    assert.isTrue(
+            isEqual(
+                    {a: 1, b: "abc", c: true},
+                    {
+                      a: new Number(1),
+                      b: new String("abc"),
+                      c: new Boolean(true)
+                    }
+            )
+            );
+    assert.isTrue(
+            isEqual(
+                    [{a: 1}, {b: true}],
+                    [{a: new Number(1)}, {b: new Boolean(true)}]
+                    )
+            );
+  });
+
+  test("returns true for equal custom entities and circular structures (from test data)", function () {
+    assert.isTrue(isEqual(data.entity1, data.entity2));
+    assert.isTrue(isEqual(data.entity2, data.entity1));
+    assert.isTrue(isEqual(data.cyclic1, data.cyclic2));
+    assert.isTrue(isEqual(data.cyclic4, data.cyclic5));
+  });
+
+  test("returns false for non-equal objects/arrays/functions", function () {
+    assert.isFalse(isEqual([], [undefined]));
+    assert.isFalse(isEqual([1, 2, 3], [3, 2, 1]));
+    assert.isFalse(isEqual({}, {a: undefined}));
+    assert.isFalse(isEqual({a: null}, {a: undefined}));
+    assert.isFalse(isEqual({a: 1}, {b: 1}));
+
+    // different function references should not be equal
+    assert.isFalse(isEqual(function () {}, function () {}));
+
+    // test data objects
+    assert.isFalse(isEqual(data.entity1, data.entity3));
+    assert.isFalse(isEqual(data.entity3, data.entity1));
+    assert.isFalse(isEqual(data.item1, data.entity1));
+    assert.isFalse(isEqual(data.item1, {name: 1}));
+    assert.isFalse(isEqual(data.fn1, data.fn2));
+    assert.isFalse(isEqual(data.fn1, data.fn3));
+
+    // circular structures: non-equal variants
+    assert.isFalse(isEqual(data.cyclic1, data.cyclic3));
+    assert.isFalse(isEqual(data.cyclic4, data.cyclic6));
+    assert.isFalse(isEqual(data.cyclic5, data.cyclic6));
+  });
+
+  // ---------------------------------------------------------------------
+  // Arguments objects
+  // ---------------------------------------------------------------------
+
+  function getArgs() {
+    return arguments;
+  }
+
+  test("treats arguments objects with same contents as equal", function () {
+    var a1 = getArgs(1, 2, 3);
+    var a2 = getArgs(1, 2, 3);
+    assert.isTrue(isEqual(a1, a2));
+  });
+
+  test("treats arguments objects with different contents as not equal", function () {
+    var a1 = getArgs(1, 2, 3);
+    var a2 = getArgs(1, 2);
+    assert.isFalse(isEqual(a1, a2));
+  });
+
+  // ---------------------------------------------------------------------
+  // Date
+  // ---------------------------------------------------------------------
+
+  test("returns true for equal Date values", function () {
+    var d1 = new Date("2020-01-01T00:00:00.000Z");
+    var d2 = new Date("2020-01-01T00:00:00.000Z");
+    assert.isTrue(isEqual(d1, d2));
+  });
+
+  test("returns false for non-equal Date values", function () {
+    var d1 = new Date("2020-01-01T00:00:00.000Z");
+    var d2 = new Date("2020-01-02T00:00:00.000Z");
+    assert.isFalse(isEqual(d1, d2));
+  });
+
+  // ---------------------------------------------------------------------
+  // RegExp
+  // ---------------------------------------------------------------------
+
+  test("returns true for equal RegExp values", function () {
+    var r1 = /abc/gi;
+    var r2 = new RegExp("abc", "gi");
+    assert.isTrue(isEqual(r1, r2));
+  });
+
+  test("returns false for non-equal RegExp values", function () {
+    assert.isFalse(isEqual(/abc/g, /abc/i));
+    assert.isFalse(isEqual(/abc/g, /abcd/g));
+  });
+
+  // ---------------------------------------------------------------------
+  // Map
+  // ---------------------------------------------------------------------
+
+  test("returns true for equal Map instances with primitive keys", function () {
+    if (typeof Map === "undefined") {
+      this.skip();
+    }
+
+    var m1 = new Map();
+    m1.set("a", 1);
+    m1.set("b", 2);
+
+    var m2 = new Map();
+    m2.set("a", 1);
+    m2.set("b", 2);
+
+    // insertion order shouldn't matter
+    var m3 = new Map();
+    m3.set("b", 2);
+    m3.set("a", 1);
+
+    assert.isTrue(isEqual(m1, m2));
+    assert.isTrue(isEqual(m1, m3));
+  });
+
+  test("returns true for equal Map instances with deep object keys/values", function () {
+    if (typeof Map === "undefined") {
+      this.skip();
+    }
+
+    var k1 = {id: 1};
+    var k2 = {id: 1};
+
+    var m1 = new Map([[k1, {value: 10}]]);
+    var m2 = new Map([[k2, {value: 10}]]);
+
+    assert.isTrue(isEqual(m1, m2));
+  });
+
+  test("returns false for non-equal Map instances", function () {
+    if (typeof Map === "undefined") {
+      this.skip();
+    }
+
+    var m1 = new Map([
+      ["a", 1],
+      ["b", 2]
+    ]);
+    var m2 = new Map([
+      ["a", 1],
+      ["b", 3]
+    ]);
+    var m3 = new Map([["a", 1]]);
+    var m4 = new Map([["c", 1]]);
+
+    assert.isFalse(isEqual(m1, m2)); // different value
+    assert.isFalse(isEqual(m1, m3)); // different size
+    assert.isFalse(isEqual(m1, m4)); // different keys
+  });
+
+  // ---------------------------------------------------------------------
+  // Set
+  // ---------------------------------------------------------------------
+
+  test("returns true for equal Set instances with primitive values", function () {
+    if (typeof Set === "undefined") {
+      this.skip();
+    }
+
+    var s1 = new Set([1, 2, 3]);
+    var s2 = new Set([3, 2, 1]);
+
+    assert.isTrue(isEqual(s1, s2));
+  });
+
+  test("returns true for equal Set instances with deep object values", function () {
+    if (typeof Set === "undefined") {
+      this.skip();
+    }
+
+    var s1 = new Set([{id: 1}, {id: 2}]);
+    var s2 = new Set([{id: 2}, {id: 1}]);
+
+    assert.isTrue(isEqual(s1, s2));
+  });
+
+  test("returns false for non-equal Set instances", function () {
+    if (typeof Set === "undefined") {
+      this.skip();
+    }
+
+    var s1 = new Set([1, 2, 3]);
+    var s2 = new Set([1, 2]);
+    var s3 = new Set([1, 2, 4]);
+
+    assert.isFalse(isEqual(s1, s2)); // different size
+    assert.isFalse(isEqual(s1, s3)); // different values
+  });
+
+  // ---------------------------------------------------------------------
+  // ArrayBuffer, TypedArrays, DataView
+  // ---------------------------------------------------------------------
+
+  test("returns true for equal ArrayBuffer instances", function () {
+    if (typeof ArrayBuffer === "undefined") {
+      this.skip();
+    }
+
+    var ab1 = new ArrayBuffer(4);
+    var ab2 = new ArrayBuffer(4);
+
+    var v1 = new Uint8Array(ab1);
+    var v2 = new Uint8Array(ab2);
+
+    v1.set([1, 2, 3, 4]);
+    v2.set([1, 2, 3, 4]);
+
+    assert.isTrue(isEqual(ab1, ab2));
+  });
+
+  test("returns false for non-equal ArrayBuffer instances", function () {
+    if (typeof ArrayBuffer === "undefined") {
+      this.skip();
+    }
+
+    var ab1 = new ArrayBuffer(4);
+    var ab2 = new ArrayBuffer(4);
+
+    var v1 = new Uint8Array(ab1);
+    var v2 = new Uint8Array(ab2);
+
+    v1.set([1, 2, 3, 4]);
+    v2.set([1, 2, 3, 5]);
+
+    assert.isFalse(isEqual(ab1, ab2));
+  });
+
+  test("returns true for equal TypedArray instances", function () {
+    if (typeof Uint8Array === "undefined") {
+      this.skip();
+    }
+
+    var t1 = new Uint8Array([1, 2, 3]);
+    var t2 = new Uint8Array([1, 2, 3]);
+
+    assert.isTrue(isEqual(t1, t2));
+  });
+
+  test("returns false for non-equal TypedArray instances", function () {
+    if (typeof Uint8Array === "undefined") {
+      this.skip();
+    }
+
+    var t1 = new Uint8Array([1, 2, 3]);
+    var t2 = new Uint8Array([1, 2, 4]);
+
+    assert.isFalse(isEqual(t1, t2));
+  });
+
+  test("returns true for equal DataView instances over equal buffers", function () {
+    if (typeof ArrayBuffer === "undefined" || typeof DataView === "undefined") {
+      this.skip();
+    }
+
+    var buf1 = new ArrayBuffer(4);
+    var buf2 = new ArrayBuffer(4);
+    var dv1 = new DataView(buf1);
+    var dv2 = new DataView(buf2);
+
+    dv1.setUint8(0, 10);
+    dv1.setUint8(1, 20);
+
+    dv2.setUint8(0, 10);
+    dv2.setUint8(1, 20);
+
+    assert.isTrue(isEqual(dv1, dv2));
+  });
+
+  test("returns false for non-equal DataView instances", function () {
+    if (typeof ArrayBuffer === "undefined" || typeof DataView === "undefined") {
+      this.skip();
+    }
+
+    var buf1 = new ArrayBuffer(4);
+    var buf2 = new ArrayBuffer(4);
+    var dv1 = new DataView(buf1);
+    var dv2 = new DataView(buf2);
+
+    dv1.setUint8(0, 10);
+    dv2.setUint8(0, 11);
+
+    assert.isFalse(isEqual(dv1, dv2));
+  });
+
+  // ---------------------------------------------------------------------
+  // Cross-type inequality checks
+  // ---------------------------------------------------------------------
+
+  test("returns false when comparing different built-in types", function () {
+    if (typeof Map !== "undefined" && typeof Set !== "undefined") {
+      assert.isFalse(isEqual(new Map(), new Set()));
+    }
+
+    assert.isFalse(isEqual(new Date(), {}));
+    assert.isFalse(isEqual(/abc/, "abc"));
+    assert.isFalse(isEqual(new Date(), Number(new Date().getTime())));
+    assert.isFalse(isEqual([], {}));
+
+    if (typeof Map !== "undefined") {
+      assert.isFalse(isEqual(new Map(), {}));
+    }
+    if (typeof Set !== "undefined") {
+      assert.isFalse(isEqual(new Set(), []));
+    }
+  });
 });

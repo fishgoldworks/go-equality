@@ -37,6 +37,8 @@ var checkEquality = require("./checkEquality");
  * isEqual(Symbol("abc"), Symbol("abc"));
  * @since 1.0.0
  */
-module.exports = function (value, other) {
-    return checkEquality(value, other);
-};
+function isEqual(value, other) {
+  return checkEquality(value, other);
+}
+
+module.exports = isEqual;

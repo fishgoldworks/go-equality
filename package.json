@@ -3,8 +3,8 @@
     "description": "Equality checking functions that work for both primitive types and objects, including nested objects and cyclic objects with a circular reference.",
     "author": "Michael Ko",
     "email": "koyote130708@gmail.com",
-    "version": "1.0.4",
-    "license": "GNU LGPLv3",
+    "version": "1.1.0",
+    "license": "MIT",
     "keywords": [
         "equal",
         "deep equal",

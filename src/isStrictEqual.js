@@ -35,6 +35,8 @@ var checkStrictEquality = require("./checkStrictEquality");
  * isStrictEqual(Symbol("abc"), Symbol("abc"));
  * @since 1.0.0
  */
-module.exports = function (value, other) {
-    return checkStrictEquality(value, other);
-};
+function isStrictEqual(value, other) {
+  return checkStrictEquality(value, other);
+}
+
+module.exports = isStrictEqual;
