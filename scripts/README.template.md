@@ -6,8 +6,8 @@
 [![License](https://img.shields.io/badge/license-LGPLv3-green.svg)](LICENSE.md)
 [![Donate](https://img.shields.io/badge/donate-blue.svg)](https://www.paypal.com/donate/?business=T7Q29NNMZVW98&no_recurring=0&item_name=Support+Go+Equality&currency_code=USD)
 
-*   **version**: {{VERSION}}
-*   **license**: {{LICENSE}}
+- **version**: {{VERSION}}
+- **license**: {{LICENSE}}
 
 ## Installation
 
@@ -31,10 +31,10 @@ Node.js **{{NODE_MIN_VERSION}} or later** is required for Node usage. Browser bu
 import * as Equality from 'go-equality';
 
 Equality.isEqual({ id: 1 }, { id: 1 }); // true
-Equality.isLooseEqual(1, '1');         // true
-Equality.isStrictEqual(1, Object(1));  // false
+Equality.isLooseEqual(1, '1'); // true
+Equality.isStrictEqual(1, Object(1)); // false
 Equality.isEqual.strict(1, Object(1)); // false
-Equality.isEqual.loose(1, '1');        // true
+Equality.isEqual.loose(1, '1'); // true
 ```
 
 or
@@ -43,8 +43,8 @@ or
 import { isEqual, isLooseEqual, isStrictEqual } from 'go-equality';
 
 isEqual({ id: 1 }, { id: 1 }); // true
-isLooseEqual(1, '1');         // true
-isStrictEqual(1, Object(1));  // false
+isLooseEqual(1, '1'); // true
+isStrictEqual(1, Object(1)); // false
 ```
 
 ### Node
@@ -54,7 +54,7 @@ const Equality = require('go-equality');
 
 Equality.isEqual([1, 2, 3], [1, 2, 3]); // true
 Equality.isLooseEqual(null, undefined); // true
-Equality.isStrictEqual(1, '1');          // false
+Equality.isStrictEqual(1, '1'); // false
 ```
 
 or
@@ -64,7 +64,7 @@ const { isEqual, isLooseEqual, isStrictEqual } = require('go-equality');
 
 isEqual([1, 2, 3], [1, 2, 3]); // true
 isLooseEqual(null, undefined); // true
-isStrictEqual(1, '1');          // false
+isStrictEqual(1, '1'); // false
 ```
 
 ### Web browser
@@ -74,11 +74,11 @@ Load the included browser bundle to use the global `Equality` object:
 ```html
 <script src="dist/go-equality.min.js"></script>
 <script>
-    const { isEqual, isLooseEqual, isStrictEqual } = Equality;
+  const { isEqual, isLooseEqual, isStrictEqual } = Equality;
 
-    isEqual([1, 2, 3], [1, 2, 3]); // true
-    isLooseEqual(1, '1');          // true
-    isStrictEqual(1, Object(1));   // false
+  isEqual([1, 2, 3], [1, 2, 3]); // true
+  isLooseEqual(1, '1'); // true
+  isStrictEqual(1, Object(1)); // false
 </script>
 ```
 
@@ -90,9 +90,9 @@ The readable bundle is `dist/go-equality.js`. Both standalone UMD bundles contai
 import { isEqual, isLooseEqual, isStrictEqual } from 'go-equality';
 
 isEqual.strict({ page: 2 }, { page: '2' }); // false
-isEqual.loose({ page: 2 }, { page: '2' });  // true
-isEqual.strict === isStrictEqual;           // true
-isEqual.loose === isLooseEqual;             // true
+isEqual.loose({ page: 2 }, { page: '2' }); // true
+isEqual.strict === isStrictEqual; // true
+isEqual.loose === isLooseEqual; // true
 ```
 
 Both import styles remain supported; the standalone exports are not deprecated.
@@ -144,30 +144,33 @@ Objects are compared by constructor and own property keys and values, including 
 
 ##### Parameters
 
-*   `value` **any** The first value to compare.
-*   `other` **any** The second value to compare.
+- `value` **any** The first value to compare.
+- `other` **any** The second value to compare.
 
 ##### Examples
 
 ```javascript
-isEqual(1, 1);                            // true
-isEqual(1, new Number(1));                // true
-isEqual(Object(1n), 1n);                  // true
-isEqual(NaN, NaN);                        // true
-isEqual(-0, +0);                          // true
-isEqual([1, 2, 3], [1, 2, 3]);            // true
+isEqual(1, 1); // true
+isEqual(1, new Number(1)); // true
+isEqual(Object(1n), 1n); // true
+isEqual(NaN, NaN); // true
+isEqual(-0, +0); // true
+isEqual([1, 2, 3], [1, 2, 3]); // true
 isEqual({ a: 1, b: 2 }, { b: 2, a: 1 }); // true
 ```
 
 ```javascript
-isEqual(1, '1');                           // false
-isEqual(null, undefined);                  // false
-isEqual({}, { a: undefined });             // false
-isEqual([1, 2, 3], [2, 3, 1]);             // false
-isEqual(Array(1), [undefined]);            // false
-isEqual(new Date(0), new Date(1));         // false
-isEqual(function () {}, function () {});  // false
-isEqual(Symbol('abc'), Symbol('abc'));      // false
+isEqual(1, '1'); // false
+isEqual(null, undefined); // false
+isEqual({}, { a: undefined }); // false
+isEqual([1, 2, 3], [2, 3, 1]); // false
+isEqual(Array(1), [undefined]); // false
+isEqual(new Date(0), new Date(1)); // false
+isEqual(
+  function () {},
+  function () {}
+); // false
+isEqual(Symbol('abc'), Symbol('abc')); // false
 ```
 
 ```javascript
@@ -176,8 +179,8 @@ const second = { roles: ['reader', 'editor'], user: { id: 1 } };
 
 isEqual(first, second); // true
 isEqual(new Set([{ id: 1 }, { id: 2 }]), new Set([{ id: 2 }, { id: 1 }])); // true
-isEqual(new Map([[{ id: 1 }, 'a']]), new Map([[{ id: 1 }, 'a']]));         // true
-isEqual(new Map([['a', 1]]), new Map([['a', 2]]));                       // false
+isEqual(new Map([[{ id: 1 }, 'a']]), new Map([[{ id: 1 }, 'a']])); // true
+isEqual(new Map([['a', 1]]), new Map([['a', 2]])); // false
 ```
 
 Returns **boolean** `true` when the values are deeply equal under these rules; otherwise `false`.
@@ -194,47 +197,47 @@ Unlike JavaScript's general `==` operator, arbitrary arrays, dates, and objects 
 
 ##### Parameters
 
-*   `value` **any** The first value to compare.
-*   `other` **any** The second value to compare.
+- `value` **any** The first value to compare.
+- `other` **any** The second value to compare.
 
 ##### Examples
 
 ```javascript
-isLooseEqual(null, undefined);                       // true
-isLooseEqual(1, '1');                                // true
-isLooseEqual(1, 1n);                                 // true
-isLooseEqual(1, true);                               // true
-isLooseEqual(new Number(1), new String('1'));         // true
-isLooseEqual({ enabled: true }, { enabled: 1 });      // true
-isLooseEqual([1, false], ['1', 0]);                   // true
-isLooseEqual(new Set([0, '']), new Set(['', '0']));    // true
-isLooseEqual(NaN, NaN);                              // true
+isLooseEqual(null, undefined); // true
+isLooseEqual(1, '1'); // true
+isLooseEqual(1, 1n); // true
+isLooseEqual(1, true); // true
+isLooseEqual(new Number(1), new String('1')); // true
+isLooseEqual({ enabled: true }, { enabled: 1 }); // true
+isLooseEqual([1, false], ['1', 0]); // true
+isLooseEqual(new Set([0, '']), new Set(['', '0'])); // true
+isLooseEqual(NaN, NaN); // true
 ```
 
 ```javascript
 class First {
-    constructor() {
-        this.value = 1;
-    }
+  constructor() {
+    this.value = 1;
+  }
 }
 
 class Second {
-    constructor() {
-        this.value = '1';
-    }
+  constructor() {
+    this.value = '1';
+  }
 }
 
-isLooseEqual(new First(), new Second());  // true
-isEqual(new First(), new Second());       // false
+isLooseEqual(new First(), new Second()); // true
+isEqual(new First(), new Second()); // false
 isStrictEqual(new First(), new Second()); // false
 ```
 
 ```javascript
-isLooseEqual(true, 'true');                         // false
-isLooseEqual(false, undefined);                     // false
-isLooseEqual([], 0);                                // false
-isLooseEqual({ valueOf: () => 1 }, 1);               // false
-isLooseEqual(new Map(), new Set());                 // false
+isLooseEqual(true, 'true'); // false
+isLooseEqual(false, undefined); // false
+isLooseEqual([], 0); // false
+isLooseEqual({ valueOf: () => 1 }, 1); // false
+isLooseEqual(new Map(), new Set()); // false
 isLooseEqual(new Uint8Array([1]), new Uint16Array([1])); // false
 ```
 
@@ -252,37 +255,40 @@ This is **not** an alias for `===`: separate objects can be structurally equal, 
 
 ##### Parameters
 
-*   `value` **any** The first value to compare.
-*   `other` **any** The second value to compare.
+- `value` **any** The first value to compare.
+- `other` **any** The second value to compare.
 
 ##### Examples
 
 ```javascript
-isStrictEqual(1, 1);                                 // true
-isStrictEqual(NaN, NaN);                             // true
-isStrictEqual(-0, +0);                               // true
-isStrictEqual(new Number(1), new Number(1));          // true
-isStrictEqual(new Number(NaN), new Number(NaN));      // true
-isStrictEqual([1, 2, 3], [1, 2, 3]);                  // true
-isStrictEqual({ a: 1, b: 2 }, { b: 2, a: 1 });       // true
+isStrictEqual(1, 1); // true
+isStrictEqual(NaN, NaN); // true
+isStrictEqual(-0, +0); // true
+isStrictEqual(new Number(1), new Number(1)); // true
+isStrictEqual(new Number(NaN), new Number(NaN)); // true
+isStrictEqual([1, 2, 3], [1, 2, 3]); // true
+isStrictEqual({ a: 1, b: 2 }, { b: 2, a: 1 }); // true
 ```
 
 ```javascript
-isStrictEqual(1, '1');                          // false
-isStrictEqual(1, new Number(1));                // false
-isStrictEqual(null, undefined);                 // false
-isStrictEqual({}, { a: undefined });            // false
-isStrictEqual([1], ['1']);                      // false
-isStrictEqual(function () {}, function () {}); // false
-isStrictEqual(Symbol('abc'), Symbol('abc'));     // false
+isStrictEqual(1, '1'); // false
+isStrictEqual(1, new Number(1)); // false
+isStrictEqual(null, undefined); // false
+isStrictEqual({}, { a: undefined }); // false
+isStrictEqual([1], ['1']); // false
+isStrictEqual(
+  function () {},
+  function () {}
+); // false
+isStrictEqual(Symbol('abc'), Symbol('abc')); // false
 ```
 
 ```javascript
 const first = Object.assign(new Number(1), { label: 'first' });
 const second = Object.assign(new Number(1), { label: 'second' });
 
-isEqual(first, second);       // true
-isLooseEqual(first, second);  // true
+isEqual(first, second); // true
+isLooseEqual(first, second); // true
 isStrictEqual(first, second); // false
 ```
 
@@ -299,16 +305,16 @@ Checks deep equality with strict mode. This is exactly the same function as
 
 ##### Parameters
 
-*   `value` **any** The first value to compare.
-*   `other` **any** The second value to compare.
+- `value` **any** The first value to compare.
+- `other` **any** The second value to compare.
 
 ##### Examples
 
 ```javascript
 isEqual.strict({ status: 'open' }, { status: 'open' }); // true
-isEqual.strict({ page: 2 }, { page: '2' });             // false
-isEqual.strict(1, Object(1));                           // false
-isEqual.strict === isStrictEqual;                      // true
+isEqual.strict({ page: 2 }, { page: '2' }); // false
+isEqual.strict(1, Object(1)); // false
+isEqual.strict === isStrictEqual; // true
 
 const strictEqual = isEqual.strict;
 strictEqual([1, 2], [1, 2]); // true
@@ -329,17 +335,17 @@ Checks deep equality with primitive coercion. This is exactly the same function 
 
 ##### Parameters
 
-*   `value` **any** The first value to compare.
-*   `other` **any** The second value to compare.
+- `value` **any** The first value to compare.
+- `other` **any** The second value to compare.
 
 ##### Examples
 
 ```javascript
 isEqual.loose({ page: 2 }, { page: '2' }); // true
-isEqual.loose(null, undefined);           // true
+isEqual.loose(null, undefined); // true
 isEqual.loose({ active: true }, { active: 'true' }); // false
-isEqual.loose([], 0);                     // false
-isEqual.loose === isLooseEqual;           // true
+isEqual.loose([], 0); // false
+isEqual.loose === isLooseEqual; // true
 ```
 
 Returns **boolean** `true` when the values are deeply equal under the loose rules;
@@ -358,10 +364,10 @@ The customizer may settle a reached pair with `true` or `false`, or return
 
 ##### Parameters
 
-*   `value` **any** The first value to compare.
-*   `other` **any** The second value to compare.
-*   `customizer` **Function** Required synchronous `(value, other) => boolean | undefined` callback. Receives the original values without an explicit receiver.
-*   `options` **Object** Optional configuration object. Its only supported own property is `mode`: `'default'`, `'strict'`, or `'loose'`. An omitted or `undefined` mode selects `'default'`.
+- `value` **any** The first value to compare.
+- `other` **any** The second value to compare.
+- `customizer` **Function** Required synchronous `(value, other) => boolean | undefined` callback. Receives the original values without an explicit receiver.
+- `options` **Object** Optional configuration object. Its only supported own property is `mode`: `'default'`, `'strict'`, or `'loose'`. An omitted or `undefined` mode selects `'default'`.
 
 ##### Examples
 
@@ -371,30 +377,35 @@ changes to the title, status, or selected user.
 
 ```javascript
 function isUserReference(value) {
-    return value !== null && typeof value === 'object' &&
-        value.type === 'user' && typeof value.id === 'string' && value.id.length > 0;
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    value.type === 'user' &&
+    typeof value.id === 'string' &&
+    value.id.length > 0
+  );
 }
 
 function compareUserReferences(left, right) {
-    const leftIsUser = isUserReference(left);
-    const rightIsUser = isUserReference(right);
-    if (!leftIsUser && !rightIsUser) return undefined;
-    return leftIsUser && rightIsUser && left.id === right.id;
+  const leftIsUser = isUserReference(left);
+  const rightIsUser = isUserReference(right);
+  if (!leftIsUser && !rightIsUser) return undefined;
+  return leftIsUser && rightIsUser && left.id === right.id;
 }
 
 const savedTask = {
-    title: 'Fix checkout validation',
-    status: 'open',
-    assignee: { type: 'user', id: 'user-42', displayName: 'Alex Kim' },
+  title: 'Fix checkout validation',
+  status: 'open',
+  assignee: { type: 'user', id: 'user-42', displayName: 'Alex Kim' }
 };
 const refreshedTask = {
-    ...savedTask,
-    assignee: { type: 'user', id: 'user-42', displayName: 'Alex K.' },
+  ...savedTask,
+  assignee: { type: 'user', id: 'user-42', displayName: 'Alex K.' }
 };
 const completedTask = { ...refreshedTask, status: 'done' };
 const reassignedTask = {
-    ...refreshedTask,
-    assignee: { type: 'user', id: 'user-99', displayName: 'Sam Lee' },
+  ...refreshedTask,
+  assignee: { type: 'user', id: 'user-99', displayName: 'Sam Lee' }
 };
 
 isEqual(savedTask, refreshedTask); // false
@@ -405,16 +416,16 @@ isEqual.custom(savedTask, reassignedTask, compareUserReferences); // false
 
 ```javascript
 function ignoreStringCase(left, right) {
-    if (typeof left === 'string' && typeof right === 'string') {
-        return left.toLowerCase() === right.toLowerCase();
-    }
-    return undefined;
+  if (typeof left === 'string' && typeof right === 'string') {
+    return left.toLowerCase() === right.toLowerCase();
+  }
+  return undefined;
 }
 
 isEqual.custom({ label: 'ADMIN' }, { label: 'admin' }, ignoreStringCase); // true
 isEqual.custom(new Set(['ADMIN', 'USER']), new Set(['user', 'admin']), ignoreStringCase); // true
 isEqual.custom({ page: 2 }, { page: '2' }, ignoreStringCase, { mode: 'strict' }); // false
-isEqual.custom({ page: 2 }, { page: '2' }, ignoreStringCase, { mode: 'loose' });   // true
+isEqual.custom({ page: 2 }, { page: '2' }, ignoreStringCase, { mode: 'loose' }); // true
 isEqual.custom(1, 1, () => false); // false
 isEqual.custom(1, 2, () => undefined); // false
 isEqual.custom(1, 2); // throws TypeError
@@ -445,8 +456,8 @@ compare inputs yet or modify `isEqual` globally.
 
 ##### Parameters
 
-*   `customizer` **Function** Required synchronous `(value, other) => boolean | undefined` callback, with the same meaning as [isEqual.custom](#isequalcustom).
-*   `options` **Object** Optional configuration object containing only an own `mode`: `'default'`, `'strict'`, or `'loose'`. Defaults to `'default'`.
+- `customizer` **Function** Required synchronous `(value, other) => boolean | undefined` callback, with the same meaning as [isEqual.custom](#isequalcustom).
+- `options` **Object** Optional configuration object containing only an own `mode`: `'default'`, `'strict'`, or `'loose'`. Defaults to `'default'`.
 
 ##### Examples
 
@@ -454,25 +465,30 @@ Define a named comparator once for a task form, then reuse it for dirty-state ch
 
 ```javascript
 function isUserReference(value) {
-    return value !== null && typeof value === 'object' &&
-        value.type === 'user' && typeof value.id === 'string' && value.id.length > 0;
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    value.type === 'user' &&
+    typeof value.id === 'string' &&
+    value.id.length > 0
+  );
 }
 
 function compareUserReferences(left, right) {
-    const leftIsUser = isUserReference(left);
-    const rightIsUser = isUserReference(right);
-    if (!leftIsUser && !rightIsUser) return undefined;
-    return leftIsUser && rightIsUser && left.id === right.id;
+  const leftIsUser = isUserReference(left);
+  const rightIsUser = isUserReference(right);
+  if (!leftIsUser && !rightIsUser) return undefined;
+  return leftIsUser && rightIsUser && left.id === right.id;
 }
 
 const isTaskFormEqual = isEqual.create(compareUserReferences, { mode: 'strict' });
 const savedTask = {
-    status: 'open',
-    assignee: { type: 'user', id: 'user-42', displayName: 'Alex Kim' },
+  status: 'open',
+  assignee: { type: 'user', id: 'user-42', displayName: 'Alex Kim' }
 };
 const refreshedTask = {
-    status: 'open',
-    assignee: { type: 'user', id: 'user-42', displayName: 'Alex K.' },
+  status: 'open',
+  assignee: { type: 'user', id: 'user-42', displayName: 'Alex K.' }
 };
 
 const hasUnsavedChanges = !isTaskFormEqual(savedTask, refreshedTask);
@@ -509,17 +525,17 @@ speculatively at creation.
 
 These rules apply recursively, not just at the top level. Identical references take the identity fast path; bilateral custom hooks can override structural and constructor comparison as described under [custom equality](#custom-equality). Wrapper normalization has the exceptions described below.
 
-| Behaviour | `isEqual` | `isLooseEqual` | `isStrictEqual` |
-| --- | --- | --- | --- |
-| Primitive types | Must match | May coerce | Must match |
-| Genuine Number/String/Boolean/BigInt/Symbol wrappers | Unboxed | Unboxed | Preserved |
-| Ordinary object constructors | Must match | Ignored | Must match |
-| `NaN` compared with `NaN` | Equal | Equal | Equal |
-| `+0` compared with `-0` | Equal | Equal | Equal |
-| Identical object/function/symbol reference | Equal | Equal | Equal |
-| Own non-enumerable and symbol properties | Compared | Compared | Compared |
-| Map/Set insertion order | Ignored | Ignored | Ignored |
-| Extra own properties on arrays and supported built-ins | Compared | Compared | Compared |
+| Behaviour                                              | `isEqual`  | `isLooseEqual` | `isStrictEqual` |
+| ------------------------------------------------------ | ---------- | -------------- | --------------- |
+| Primitive types                                        | Must match | May coerce     | Must match      |
+| Genuine Number/String/Boolean/BigInt/Symbol wrappers   | Unboxed    | Unboxed        | Preserved       |
+| Ordinary object constructors                           | Must match | Ignored        | Must match      |
+| `NaN` compared with `NaN`                              | Equal      | Equal          | Equal           |
+| `+0` compared with `-0`                                | Equal      | Equal          | Equal           |
+| Identical object/function/symbol reference             | Equal      | Equal          | Equal           |
+| Own non-enumerable and symbol properties               | Compared   | Compared       | Compared        |
+| Map/Set insertion order                                | Ignored    | Ignored        | Ignored         |
+| Extra own properties on arrays and supported built-ins | Compared   | Compared       | Compared        |
 
 #### Objects and property keys
 
@@ -539,17 +555,17 @@ Object prototypes themselves are not compared. Distinct custom prototypes with t
 
 #### Built-in values
 
-| Value | Compared state |
-| --- | --- |
-| Arrays | Length, existing indices, and other own properties. A hole differs from explicit `undefined`. |
-| Arguments | Indexed values, length and custom own properties. Engine bookkeeping `callee` and `Symbol.iterator` are omitted. |
-| Maps | A one-to-one matching of complete key/value entries. Keys may match structurally. |
-| Sets | A one-to-one matching of members. A candidate cannot be used twice. |
-| Dates | Timestamp; two invalid dates are equal. |
-| RegExp | Source, intrinsic flags, and own properties including `lastIndex`. |
-| Typed arrays / Node Buffers | Element kind, length and numeric elements; `NaN` values match and signed zeros match. Extra own properties also matter. |
-| ArrayBuffer / SharedArrayBuffer | Bytes and additional own properties. These are different kinds. Shared memory must remain stable during comparison. |
-| DataView | Only bytes inside the view window, plus additional own properties. Different backing-buffer offsets can compare equal. |
+| Value                           | Compared state                                                                                                          |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Arrays                          | Length, existing indices, and other own properties. A hole differs from explicit `undefined`.                           |
+| Arguments                       | Indexed values, length and custom own properties. Engine bookkeeping `callee` and `Symbol.iterator` are omitted.        |
+| Maps                            | A one-to-one matching of complete key/value entries. Keys may match structurally.                                       |
+| Sets                            | A one-to-one matching of members. A candidate cannot be used twice.                                                     |
+| Dates                           | Timestamp; two invalid dates are equal.                                                                                 |
+| RegExp                          | Source, intrinsic flags, and own properties including `lastIndex`.                                                      |
+| Typed arrays / Node Buffers     | Element kind, length and numeric elements; `NaN` values match and signed zeros match. Extra own properties also matter. |
+| ArrayBuffer / SharedArrayBuffer | Bytes and additional own properties. These are different kinds. Shared memory must remain stable during comparison.     |
+| DataView                        | Only bytes inside the view window, plus additional own properties. Different backing-buffer offsets can compare equal.  |
 
 Typed arrays compare **numeric values**; raw buffers and DataViews compare **bytes**. Consequently two float arrays containing different NaN bit patterns can be equal while their buffers are unequal. Buffer and Uint8Array share an element kind, but have different constructors: only loose mode can compare them across those constructors.
 
@@ -565,7 +581,6 @@ isStrictEqual(a, b); // false
 isEqual(new Float64Array([NaN]), new Float64Array([NaN])); // true
 isEqual(new Float64Array([-0]).buffer, new Float64Array([+0]).buffer); // false
 ```
-
 
 ```javascript
 const first = /item/gi;
@@ -584,8 +599,8 @@ const second = new Uint8Array([1, 2]);
 const window = new DataView(first.buffer, 1, 2);
 const whole = new DataView(second.buffer);
 
-isEqual(window, whole);                  // true
-isEqual(first.buffer, second.buffer);    // false
+isEqual(window, whole); // true
+isEqual(first.buffer, second.buffer); // false
 isEqual(new Float64Array([-0]), new Float64Array([+0])); // true
 ```
 
@@ -598,11 +613,11 @@ instance hooks where applicable. No rule is installed globally.
 
 #### Caller customizers
 
-| Result | Effect on the reached pair |
-|---|---|
-| `true` | Accept as equal without inspecting its children. |
-| `false` | Reject as unequal; no default fallback for this pair. |
-| `undefined` | Use the selected standard mode. |
+| Result      | Effect on the reached pair                            |
+| ----------- | ----------------------------------------------------- |
+| `true`      | Accept as equal without inspecting its children.      |
+| `false`     | Reject as unequal; no default fallback for this pair. |
+| `undefined` | Use the selected standard mode.                       |
 
 The callback receives original values before identity and wrapper normalization.
 It is also applied to reached own-property values (including symbols and
@@ -659,16 +674,27 @@ isEqual(new Entity(1, 'label'), new Entity(2, 'label')); // false
 
 Hooks should be pure and deterministic. A hook may compare a different pair recursively, but must not call the same equality operation indefinitely on the same pair. Hook call counts and evaluation order are not an API guarantee. The same applies to getters and proxy traps: short-circuiting may avoid invoking them, and errors from code that is invoked propagate.
 
-
 ```javascript
-const accepts = { equals() { return true; } };
-const rejects = { equals() { return false; } };
-const invalid = { equals() { return 'yes'; } };
+const accepts = {
+  equals() {
+    return true;
+  }
+};
+const rejects = {
+  equals() {
+    return false;
+  }
+};
+const invalid = {
+  equals() {
+    return 'yes';
+  }
+};
 
 isEqual(accepts, rejects); // false
 isEqual(rejects, accepts); // false
 isEqual(rejects, rejects); // true
-isEqual(invalid, {});      // throws TypeError
+isEqual(invalid, {}); // throws TypeError
 ```
 
 ### Circular references
@@ -721,16 +747,20 @@ npm test
 npm run coverage
 ```
 
-Install the pinned development dependencies (Acorn for bundling, Terser for minification, and TypeScript for declaration checks) before rebuilding:
+Contributing requires Node 22.18+ within Node 22, or Node 24+ (the lint toolchain does not support Node 23). The published library retains its Node {{NODE_MIN_VERSION}} runtime minimum. Install the locked development tools for linting, formatting, bundling, minification and declaration checks:
 
 ```sh
 npm ci
 npm run docs
 npm run build
+npm run lint
+npm run format:check
 npm run verify
 ```
 
-`verify` rebuilds both bundles, checks documentation freshness, runs the source suite with coverage and the strict TypeScript consumer fixture, reruns the public suite through each bundle's CommonJS/global/AMD branches, and tests an installed packed package including named ESM imports, CommonJS/ESM declaration consumers and both browser bundles through their exported paths and loaders. It also checks build-failure recovery and bundle loader environments, and runs the constrained-old-space regression. The single `npm run build` command runs internal bundling and minification stages sequentially in a temporary directory, validates both bundles, then replaces `dist` as a complete set. A failed replacement restores the previous distribution; if restoration also fails, the error identifies the retained backup. Successful builds remove stale output. Terser compresses JavaScript and shortens local identifiers, producing one line of code after the licence banner. Public property names and function names are preserved. Comparison and typeof rewrites that could change browser document.all behavior are disabled, and property access is not assumed to be free of getter/proxy side effects. Both generated bundles are syntax-checked and exercised through the same behavioral suite. `npm run test:build` exercises build failures and output replacement in isolated temporary copies. Bundling and minification are internal functions; partial-build commands are not exposed.
+`verify` first runs ESLint with zero warnings and checks formatting, then rebuilds both bundles, checks documentation freshness, runs the source suite with coverage and the strict TypeScript consumer fixture, reruns the public suite through each bundle's CommonJS/global/AMD branches, and tests an installed packed package including named ESM imports, CommonJS/ESM declaration consumers and both browser bundles through their exported paths and loaders. It also checks build-failure recovery and bundle loader environments, and runs the constrained-old-space regression. The single `npm run build` command runs internal bundling and minification stages sequentially in a temporary directory, validates both bundles, then replaces `dist` as a complete set. A failed replacement restores the previous distribution; if restoration also fails, the error identifies the retained backup. Successful builds remove stale output. Terser compresses JavaScript and shortens local identifiers, producing one line of code after the licence banner. Public property names and function names are preserved. Comparison and typeof rewrites that could change browser document.all behavior are disabled, and property access is not assumed to be free of getter/proxy side effects. Both generated bundles are syntax-checked and exercised through the same behavioral suite. `npm run test:build` exercises build failures and output replacement in isolated temporary copies. Bundling and minification are internal functions; partial-build commands are not exposed.
+
+Use `npm run lint:fix` and `npm run format` for reviewed fixes. Formatting uses single JS/TS quotes, double JSX quotes, semicolons, two spaces and no optional trailing commas. Edit maintained sources; generated bundles and this README are checked through their own build/documentation gates. The source checkout's `docs/code-quality.md` records the shared configuration artifact and scoped exceptions. CI runs the same `verify` command on Node 22 and 24; repository administrators must make the Verify checks required in branch protection.
 
 `npm run docs` regenerates this README from `scripts/README.template.md`, package metadata and the public API. Edit the template for prose and examples; the generator maintains the current version, runtime/compiler versions, public-call count and table of contents. Historical release descriptions remain authored text. Documentation tests execute the examples and reject stale generated output, missing API entries and broken links. `npm run test:docs` checks freshness without modifying files. CI regenerates the README and checks for drift.
 
@@ -798,8 +828,8 @@ Version 2 fixes observable behaviour in cyclic comparisons, unordered collection
 
 ## Additional documentation
 
-*   [Changelog](CHANGELOG.md): changes in 2.0.0 and migration from version 1.
-*   [Source repository](https://github.com/koyote130708/go-equality): see `docs/design.md` for comparison-engine internals and `docs/test-coverage.md` for the test coverage map.
+- [Changelog](CHANGELOG.md): changes in 2.0.0 and migration from version 1.
+- [Source repository](https://github.com/koyote130708/go-equality): see `docs/design.md` for comparison-engine internals and `docs/test-coverage.md` for the test coverage map.
 
 The npm package contains runtime source, TypeScript declarations, both browser bundles, package metadata, this README, the licence, and the changelog. Development documents, tests, benchmarks, scripts, and CI configuration stay in the source repository. README examples and packaged relative links are checked during release verification.
 

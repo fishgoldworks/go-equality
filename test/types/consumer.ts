@@ -1,5 +1,5 @@
 import { isEqual, isLooseEqual, isStrictEqual } from 'go-equality';
-const values: boolean[] = [isEqual({x: 1}, {x: 1}), isLooseEqual(1, '1'), isStrictEqual(1, Object(1))];
+const values: boolean[] = [isEqual({ x: 1 }, { x: 1 }), isLooseEqual(1, '1'), isStrictEqual(1, Object(1))];
 function checkUnknown(value: unknown): boolean {
   return isEqual(value, 1);
 }
@@ -10,14 +10,25 @@ const result: string = isStrictEqual(null, undefined);
 function noTypeGuard(value: unknown): void {
   if (isEqual(value, 1)) {
     // @ts-expect-error this comparator does not narrow an unknown value to number
-    value.toFixed();
+    value.toFixed(); // eslint-disable-line @typescript-eslint/no-unsafe-call -- Compiler must reject narrowing.
   }
 }
-void values; void checkUnknown; void noTypeGuard; void result;
+void values;
+void checkUnknown;
+void noTypeGuard;
+void result;
 
-import type { EqualityComparator, EqualityCustomizer, EqualityMode, EqualityOptions, EqualityFunction } from 'go-equality';
+import type {
+  EqualityComparator,
+  EqualityCustomizer,
+  EqualityMode,
+  EqualityOptions,
+  EqualityFunction
+} from 'go-equality';
 const customizer: EqualityCustomizer = (left, right) => {
-  if (typeof left === 'string' && typeof right === 'string') return left.toLowerCase() === right.toLowerCase();
+  if (typeof left === 'string' && typeof right === 'string') {
+    return left.toLowerCase() === right.toLowerCase();
+  }
   return undefined;
 };
 const mode: EqualityMode = 'strict';
@@ -38,7 +49,7 @@ isEqual.create();
 // @ts-expect-error customizers must return a primitive boolean or undefined
 isEqual.create(() => 'yes');
 // @ts-expect-error asynchronous customizers are not supported
-isEqual.custom(1, 2, async () => true);
+isEqual.custom(1, 2, async () => true); // eslint-disable-line @typescript-eslint/require-await -- Compiler must reject async callbacks.
 // @ts-expect-error unknown mode
 isEqual.create(customizer, { mode: 'Strict' });
 // @ts-expect-error unknown option
@@ -50,7 +61,7 @@ isEqual.strict = isStrictEqual;
 // @ts-expect-error attached factory is read-only
 isEqual.create = () => isEqual;
 // @ts-expect-error returned comparator is a plain binary function
-customCompare.loose(1, '1');
+customCompare.loose(1, '1'); // eslint-disable-line @typescript-eslint/no-unsafe-call -- Compiler must reject absent modes.
 // @ts-expect-error returned comparator needs both operands
 customCompare(1);
 // @ts-expect-error customizer must accept arbitrary compared values, not just strings
@@ -58,7 +69,12 @@ isEqual.create((a: string, b: string) => a === b);
 function noCustomTypeGuard(value: unknown): void {
   if (customCompare(value, 1)) {
     // @ts-expect-error custom comparison is not a type guard
-    value.toFixed();
+    value.toFixed(); // eslint-disable-line @typescript-eslint/no-unsafe-call -- Compiler must reject narrowing.
   }
 }
-void grouped; void strict; void loose; void customResult; void createdResult; void noCustomTypeGuard;
+void grouped;
+void strict;
+void loose;
+void customResult;
+void createdResult;
+void noCustomTypeGuard;

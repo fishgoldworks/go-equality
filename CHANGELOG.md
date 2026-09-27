@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Development
+
+- Adopt the immutable Engineering Playbook v0.12.0 lint artifact with ESLint 10 and shared formatting; require lint and format checks before existing validation and CI.
+- Apply the agreed formatting throughout maintained sources and retain intentional equality/type-test exceptions locally. Runtime comparison expressions are unchanged.
+- Check formatted multiline documentation examples and preserve build/cleanup errors explicitly.
+
 ## 2.0.0
 
 This major release includes correctness repairs, performance refinements, caller customizers, and browser support.
@@ -32,21 +40,22 @@ This major release includes correctness repairs, performance refinements, caller
 - Name tests by public API or protected behavior. Remove temporary development plans, superseded reports, and raw verification output from the source documentation.
 
 ### v1.0.4
+
 2022-10-19
 
- * Converted to CommonJS module format.
- * Added a build script.
- * Added a changelog file.
- * Added the bundle files.
+- Converted to CommonJS module format.
+- Added a build script.
+- Added a changelog file.
+- Added the bundle files.
 
- 
 ### v1.0.3
+
 2022-09-01
 
- * Updated the readme file.
- 
+- Updated the readme file.
 
 ### v1.0.0
+
 2022-08-21
 
- * Initial release
+- Initial release

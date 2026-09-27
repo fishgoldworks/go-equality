@@ -11,16 +11,23 @@ function keyDomain(collection, iterate) {
     const type = key === null ? 'null' : typeof key;
     // HTMLDDA is not a primitive undefined key; native membership and loose
     // primitive coercion are not interchangeable for this browser object.
-    if (type === 'object' || (type === 'undefined' && key !== undefined)) return null;
-    if (domain === 'empty') domain = type;
-    else if (domain !== type) domain = 'mixed';
+    if (type === 'object' || (type === 'undefined' && key !== undefined)) {
+      return null;
+    }
+    if (domain === 'empty') {
+      domain = type;
+    } else if (domain !== type) {
+      domain = 'mixed';
+    }
   }
   return domain;
 }
 
 function nativeRelation(a, b, iterate, mode) {
   const left = keyDomain(a, iterate);
-  if (left === null) return false;
+  if (left === null) {
+    return false;
+  }
   const right = keyDomain(b, iterate);
   // SameValueZero is exactly the relation on atomic keys in default/strict
   // mode. Loose mode needs a homogeneous type on BOTH sides: native-key
@@ -29,27 +36,46 @@ function nativeRelation(a, b, iterate, mode) {
 }
 
 module.exports = function compareCollections(node, context, isMap, size, custom = false) {
-  if (size === 0) return true;
+  if (size === 0) {
+    return true;
+  }
   const a = node.left;
   const b = node.right;
   if (!custom && !isMap) {
     let allPresent = true;
     for (const value of setValues.call(a)) {
-      if (!setHas.call(b, value)) { allPresent = false; break; }
+      if (!setHas.call(b, value)) {
+        allPresent = false;
+        break;
+      }
     }
     // A full native identity matching proves equality in every mode, including
     // sets of shared object references. It does not reserve a partial matching.
-    if (allPresent) return true;
-    if (nativeRelation(a, b, setValues, context.mode)) return false;
+    if (allPresent) {
+      return true;
+    }
+    if (nativeRelation(a, b, setValues, context.mode)) {
+      return false;
+    }
   } else if (!custom && nativeRelation(a, b, mapKeys, context.mode)) {
     for (const [key, value] of mapEntries.call(a)) {
-      if (!mapHas.call(b, key)) return false;
+      if (!mapHas.call(b, key)) {
+        return false;
+      }
       const other = mapGet.call(b, key);
-      if (value !== other && !context.require(node, context.pair(value, other))) return false;
+      if (value !== other && !context.require(node, context.pair(value, other))) {
+        return false;
+      }
     }
     return true;
   }
   const iterate = isMap ? mapEntries : setValues;
-  node.collection = new CollectionMatcher(node, context, Array.from(iterate.call(a)), Array.from(iterate.call(b)), isMap);
+  node.collection = new CollectionMatcher(
+    node,
+    context,
+    Array.from(iterate.call(a)),
+    Array.from(iterate.call(b)),
+    isMap
+  );
   return true;
 };

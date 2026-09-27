@@ -7,14 +7,21 @@ const root = path.resolve(__dirname, '..');
 const destination = path.join(root, 'dist');
 const metadata = require('../package.json');
 const banner = '/*! go-equality v' + metadata.version + ' | Copyright (c) 2022-2026 Michael Ko | LGPL-3.0-only */';
-const parse = text => acorn.parse(text, { ecmaVersion: 2022, sourceType: 'script' });
+const parse = (text) => acorn.parse(text, { ecmaVersion: 2022, sourceType: 'script' });
 
 function walk(node, visit) {
-  if (!node || typeof node !== 'object') return;
-  if (node.type) visit(node);
+  if (!node || typeof node !== 'object') {
+    return;
+  }
+  if (node.type) {
+    visit(node);
+  }
   for (const child of Object.values(node)) {
-    if (Array.isArray(child)) child.forEach(item => walk(item, visit));
-    else if (child && typeof child === 'object') walk(child, visit);
+    if (Array.isArray(child)) {
+      child.forEach((item) => walk(item, visit));
+    } else if (child && typeof child === 'object') {
+      walk(child, visit);
+    }
   }
 }
 
@@ -23,14 +30,18 @@ function bundle(output) {
   const modules = [];
   function add(file) {
     file = path.resolve(file);
-    if (ids.has(file)) return ids.get(file);
+    if (ids.has(file)) {
+      return ids.get(file);
+    }
     const id = modules.length;
     ids.set(file, id);
     modules.push(null);
     const source = fs.readFileSync(file, 'utf8');
     const replacements = [];
-    walk(parse(source), node => {
-      if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier' || node.callee.name !== 'require') return;
+    walk(parse(source), (node) => {
+      if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier' || node.callee.name !== 'require') {
+        return;
+      }
       const specifier = node.arguments[0]?.value;
       if (node.arguments.length !== 1 || typeof specifier !== 'string' || !specifier.startsWith('./')) {
         throw new Error('Build accepts static local requires only: ' + file);
@@ -39,12 +50,16 @@ function bundle(output) {
       replacements.push([node.start, node.end, '__require(' + add(target) + ')']);
     });
     let rewritten = source;
-    for (const [start, end, replacement] of replacements.sort((a, b) => b[0] - a[0])) rewritten = rewritten.slice(0, start) + replacement + rewritten.slice(end);
+    for (const [start, end, replacement] of replacements.sort((a, b) => b[0] - a[0])) {
+      rewritten = rewritten.slice(0, start) + replacement + rewritten.slice(end);
+    }
     modules[id] = 'function(module, exports, __require) {\n' + rewritten + '\n}';
     return id;
   }
   add(path.join(root, 'index.js'));
-  const text = banner + `
+  const text =
+    banner +
+    `
 (function (root, factory) {
   if (typeof module === 'object' && module !== null && module.exports) module.exports = factory();
   else if (typeof define === 'function' && define.amd) define([], factory);
@@ -79,12 +94,12 @@ function minify(output) {
       comparisons: false,
       typeofs: false,
       // Getters and proxy traps are observable parts of the comparison contract.
-      pure_getters: false,
+      pure_getters: false
     },
     mangle: { properties: false },
     keep_fnames: true,
     keep_classnames: true,
-    format: { comments: false, preamble: banner, beautify: false },
+    format: { comments: false, preamble: banner, beautify: false }
   });
   parse(code);
   fs.writeFileSync(path.join(output, 'go-equality.min.js'), code + '\n');
@@ -97,26 +112,38 @@ function replaceDistribution(temporary) {
     fs.renameSync(destination, previous);
     hadPrevious = true;
   } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
+    if (error.code !== 'ENOENT') {
+      throw error;
+    }
   }
   try {
     fs.renameSync(temporary, destination);
   } catch (error) {
     if (hadPrevious) {
-      try { fs.renameSync(previous, destination); }
-      catch (restoreError) {
-        throw new AggregateError([error, restoreError], 'Build replacement and rollback failed; previous distribution retained at ' + previous);
+      try {
+        fs.renameSync(previous, destination);
+      } catch (restoreError) {
+        throw new AggregateError(
+          [error, restoreError],
+          'Build replacement and rollback failed; previous distribution retained at ' + previous,
+          { cause: restoreError }
+        );
       }
     }
     throw error;
   }
-  if (hadPrevious) fs.rmSync(previous, {recursive:true, force:true});
+  if (hadPrevious) {
+    fs.rmSync(previous, { recursive: true, force: true });
+  }
 }
 
 function main() {
-  if (process.argv.length > 2) throw Error('Usage: node scripts/build.js');
+  if (process.argv.length > 2) {
+    throw Error('Usage: node scripts/build.js');
+  }
   const temporary = fs.mkdtempSync(path.join(root, '.go-equality-build-'));
   let buildError;
+  let buildFailed = false;
   try {
     bundle(temporary);
     minify(temporary);
@@ -125,15 +152,22 @@ function main() {
     console.log('Built complete distribution successfully.');
   } catch (error) {
     buildError = error;
-    throw error;
-  } finally {
-    try { fs.rmSync(temporary, {recursive:true, force:true}); }
-    catch (cleanupError) {
-      if (buildError) {
-        throw new AggregateError([buildError, cleanupError], buildError.message + '; cleanup also failed at ' + temporary);
-      }
-      throw cleanupError;
+    buildFailed = true;
+  }
+  try {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  } catch (cleanupError) {
+    if (buildFailed) {
+      throw new AggregateError(
+        [buildError, cleanupError],
+        (buildError?.message ?? String(buildError)) + '; cleanup also failed at ' + temporary,
+        { cause: cleanupError }
+      );
     }
+    throw cleanupError;
+  }
+  if (buildFailed) {
+    throw buildError;
   }
 }
 main();

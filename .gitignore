@@ -5,3 +5,6 @@ coverage/
 .idea/
 .DS_Store
 nbproject
+
+# Reviewed build-tool artifact; keep installation independent of a registry.
+!vendor/fishgold-eslint-config-0.2.0.tgz

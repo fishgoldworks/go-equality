@@ -1,0 +1,4 @@
+{
+  "extends": "./test/types/tsconfig.json",
+  "files": ["index.d.ts", "test/types/consumer.ts", "test/types/require.cts"]
+}

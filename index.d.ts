@@ -13,7 +13,12 @@ export interface EqualityFunction {
   readonly strict: typeof isStrictEqual;
   readonly loose: typeof isLooseEqual;
   /** Compare now. Receives original pairs before identity, unboxing and instance hooks. */
-  readonly custom: (value: unknown, other: unknown, customizer: EqualityCustomizer, options?: EqualityOptions) => boolean;
+  readonly custom: (
+    value: unknown,
+    other: unknown,
+    customizer: EqualityCustomizer,
+    options?: EqualityOptions
+  ) => boolean;
   /** Snapshot configuration once; return a plain binary comparator with fresh state per call. */
   readonly create: (customizer: EqualityCustomizer, options?: EqualityOptions) => EqualityComparator;
 }

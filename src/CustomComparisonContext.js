@@ -16,7 +16,9 @@ class CustomComparisonContext extends ComparisonContext {
     // Original values reach the customizer before unboxing or instance hooks.
     const customizer = this.customizer;
     const result = customizer(left, right);
-    if (result === true || result === false) return result;
+    if (result === true || result === false) {
+      return result;
+    }
     if (result !== undefined) {
       throw new TypeError('Equality customizer must return true, false, or undefined.');
     }
@@ -24,8 +26,12 @@ class CustomComparisonContext extends ComparisonContext {
   }
 
   expand(node) {
-    if (node.expanded || !node.valid) return;
-    if (!compareObjects(node, this, true)) this.invalidate(node);
+    if (node.expanded || !node.valid) {
+      return;
+    }
+    if (!compareObjects(node, this, true)) {
+      this.invalidate(node);
+    }
     node.expanded = true;
   }
 }

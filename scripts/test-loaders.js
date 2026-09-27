@@ -12,8 +12,11 @@ function verifyLoaders(directory = path.resolve(__dirname, '../dist')) {
     assert.equal(source.startsWith('/*! go-equality v' + version + ' |'), true, 'Stale bundle version: ' + file);
     if (file.endsWith('.min.js')) {
       const code = source.replace(/^\/\*![\s\S]*?\*\/\s*/, '').trim();
-      assert.equal(/[\r\n\u2028\u2029]/.test(code), false,
-        'Minified bundle must contain one line of code after the licence banner.');
+      assert.equal(
+        /[\r\n\u2028\u2029]/.test(code),
+        false,
+        'Minified bundle must contain one line of code after the licence banner.'
+      );
     }
     for (const unrelatedModule of [undefined, null, {}, 0, 'unrelated']) {
       for (const amd of [false, true]) {
@@ -35,7 +38,12 @@ function verifyLoaders(directory = path.resolve(__dirname, '../dist')) {
         checks++;
       }
     }
-    const sandbox = { module: { exports: {} }, define() { throw Error('CommonJS has priority'); } };
+    const sandbox = {
+      module: { exports: {} },
+      define() {
+        throw Error('CommonJS has priority');
+      }
+    };
     sandbox.define.amd = {};
     vm.runInNewContext(source, sandbox, { filename: file });
     assert.equal(sandbox.module.exports.isEqual(new Set([1]), new Set([1])), true);
@@ -47,4 +55,6 @@ function verifyLoaders(directory = path.resolve(__dirname, '../dist')) {
 }
 
 module.exports = verifyLoaders;
-if (require.main === module) verifyLoaders();
+if (require.main === module) {
+  verifyLoaders();
+}

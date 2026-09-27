@@ -16,7 +16,9 @@ class CollectionMatcher {
     this.rejected = null;
     this.rejectionCounts = null;
     this.rightIndex = new Map();
-    for (let i = 0; i < right.length; i++) this.rightIndex.set(isMap ? right[i][0] : right[i], i);
+    for (let i = 0; i < right.length; i++) {
+      this.rightIndex.set(isMap ? right[i][0] : right[i], i);
+    }
     this.visited = null;
     this.parent = null;
     this.rows = null;
@@ -24,9 +26,13 @@ class CollectionMatcher {
 
   edge(i, j) {
     const rejected = this.rejected && this.rejected[i];
-    if (rejected && (rejected[j >>> 3] & (1 << (j & 7)))) return false;
+    if (rejected && rejected[j >>> 3] & (1 << (j & 7))) {
+      return false;
+    }
     let row = this.edges[i];
-    if (!row) this.edges[i] = row = new Map();
+    if (!row) {
+      this.edges[i] = row = new Map();
+    }
     let ref = row.get(j);
     if (ref === undefined) {
       const a = this.left[i];
@@ -34,15 +40,23 @@ class CollectionMatcher {
       ref = this.context.probe(this.isMap ? a[0] : a, this.isMap ? b[0] : b);
       if (this.isMap && ref !== false) {
         const value = this.context.probe(a[1], b[1]);
-        if (value === false || ref === true) ref = value;
-        else if (value !== true) ref = [ref, value];
+        if (value === false || ref === true) {
+          ref = value;
+        } else if (value !== true) {
+          ref = [ref, value];
+        }
       }
-      if (ref === false) this.reject(i, j, row, rejected);
-      else row.set(j, ref);
+      if (ref === false) {
+        this.reject(i, j, row, rejected);
+      } else {
+        row.set(j, ref);
+      }
     }
     // Settled leaves and failures use booleans, with no reference-array or
     // watcher allocation. Only genuinely provisional key/value pairs need two.
-    if (typeof ref === 'boolean') return ref;
+    if (typeof ref === 'boolean') {
+      return ref;
+    }
     return Array.isArray(ref) ? ref[0].valid && ref[1].valid : ref.valid;
   }
 
@@ -52,13 +66,19 @@ class CollectionMatcher {
       return;
     }
     row.set(j, false);
-    if (!this.rejectionCounts) this.rejectionCounts = new Uint8Array(this.size);
-    if (++this.rejectionCounts[i] !== 64) return;
+    if (!this.rejectionCounts) {
+      this.rejectionCounts = new Uint8Array(this.size);
+    }
+    if (++this.rejectionCounts[i] !== 64) {
+      return;
+    }
     // Sparse/identity rows remain Maps. After many settled failures, retain one
     // bit per rejected column rather than a Map entry per failed candidate.
     // Positive and provisional edges MUST remain references, not optimistic bits.
-    if (!this.rejected) this.rejected = new Array(this.size);
-    const bits = this.rejected[i] = new Uint8Array(Math.ceil(this.size / 8));
+    if (!this.rejected) {
+      this.rejected = new Array(this.size);
+    }
+    const bits = (this.rejected[i] = new Uint8Array(Math.ceil(this.size / 8)));
     for (const [column, ref] of row) {
       if (ref === false) {
         bits[column >>> 3] |= 1 << (column & 7);
@@ -81,7 +101,9 @@ class CollectionMatcher {
     if (Array.isArray(ref)) {
       this.context.watch(this.node, ref[0]);
       this.context.watch(this.node, ref[1]);
-    } else this.context.watch(this.node, ref);
+    } else {
+      this.context.watch(this.node, ref);
+    }
   }
 
   augment(start) {
@@ -96,7 +118,9 @@ class CollectionMatcher {
       this.visited = new Uint8Array(this.size);
       this.parent = new Int32Array(this.size);
       this.rows = new Int32Array(this.size);
-    } else this.visited.fill(0);
+    } else {
+      this.visited.fill(0);
+    }
     const visited = this.visited;
     const parent = this.parent;
     const rows = this.rows;
@@ -107,7 +131,9 @@ class CollectionMatcher {
       const first = this.preferred(i);
       for (let step = -1; step < this.size; step++) {
         const j = step === -1 ? first : step;
-        if (j === undefined || (step !== -1 && j === first) || visited[j] || !this.edge(i, j)) continue;
+        if (j === undefined || (step !== -1 && j === first) || visited[j] || !this.edge(i, j)) {
+          continue;
+        }
         visited[j] = 1;
         parent[j] = i;
         const previous = this.rightMatch[j];
@@ -139,7 +165,9 @@ class CollectionMatcher {
       }
     }
     for (let i = 0; i < this.size; i++) {
-      if (this.leftMatch[i] === -1 && !this.augment(i)) return false;
+      if (this.leftMatch[i] === -1 && !this.augment(i)) {
+        return false;
+      }
     }
     return true;
   }

@@ -39,18 +39,26 @@
     "test:stress": "node scripts/stress.js",
     "test:browser": "python scripts/test-browser.py",
     "coverage": "npm test -- --experimental-test-coverage --test-coverage-include=\"src/**\"",
-    "verify": "npm run build && npm run test:docs && npm run coverage && npm run test:types && npm run test:build && npm run test:artifacts && npm run test:package && npm run test:memory",
+    "verify": "npm run lint && npm run format:check && npm run build && npm run test:docs && npm run coverage && npm run test:types && npm run test:build && npm run test:artifacts && npm run test:package && npm run test:memory",
     "verify:all": "npm run verify && npm run test:browser",
     "benchmark": "node scripts/benchmark.js",
     "benchmark:custom": "node scripts/benchmark-custom.js",
     "benchmark:memory": "node scripts/benchmark-memory.js",
     "prepack": "npm run verify",
-    "prepublishOnly": "npm run verify:all"
+    "prepublishOnly": "npm run verify:all",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check"
   },
   "devDependencies": {
     "acorn": "8.15.0",
     "terser": "5.51.2",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "@fishgold/eslint-config": "file:vendor/fishgold-eslint-config-0.2.0.tgz",
+    "eslint": "10.11.0",
+    "prettier": "3.9.6",
+    "typescript-eslint": "8.70.1"
   },
   "engines": {
     "node": ">=22.16.0"
