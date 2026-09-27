@@ -9,9 +9,11 @@
 
 "use strict";
 
-var assert = require("chai").assert;
-var isEqual = require("../src/isEqual");
-var data = require("./data/testData");
+const { describe: suite, it: test } = require("node:test");
+const strictAssert = require("node:assert/strict");
+const assert = { isTrue: value => strictAssert.equal(value, true), isFalse: value => strictAssert.equal(value, false) };
+var isEqual = require("./helpers/api").isEqual;
+var data = require("./data/test-data");
 
 suite("#isEqual", function () {
   // ---------------------------------------------------------------------
@@ -130,45 +132,45 @@ suite("#isEqual", function () {
     assert.isTrue(isEqual([], []));
     assert.isTrue(isEqual([1, 2, 3], [1, 2, 3]));
     assert.isTrue(
-            isEqual(
-                    [[false], [1, 2], ["a", "b", "c"]],
-                    [[false], [1, 2], ["a", "b", "c"]]
-                    )
-            );
+        isEqual(
+            [[false], [1, 2], ["a", "b", "c"]],
+            [[false], [1, 2], ["a", "b", "c"]]
+        )
+    );
 
     assert.isTrue(isEqual({}, {}));
     assert.isTrue(
-            isEqual(
-                    {a: 1, b: "abc", c: true},
-                    {a: 1, b: "abc", c: true}
-            )
-            );
+        isEqual(
+            {a: 1, b: "abc", c: true},
+            {a: 1, b: "abc", c: true}
+        )
+    );
 
     // property order should not matter
     assert.isTrue(
-            isEqual(
-                    {a: 1, b: "abc", c: true},
-                    {b: "abc", a: 1, c: true}
-            )
-            );
+        isEqual(
+            {a: 1, b: "abc", c: true},
+            {b: "abc", a: 1, c: true}
+        )
+    );
 
     // boxed values inside objects/arrays
     assert.isTrue(
-            isEqual(
-                    {a: 1, b: "abc", c: true},
-                    {
-                      a: new Number(1),
-                      b: new String("abc"),
-                      c: new Boolean(true)
-                    }
-            )
-            );
+        isEqual(
+            {a: 1, b: "abc", c: true},
+            {
+              a: new Number(1),
+              b: new String("abc"),
+              c: new Boolean(true)
+            }
+        )
+    );
     assert.isTrue(
-            isEqual(
-                    [{a: 1}, {b: true}],
-                    [{a: new Number(1)}, {b: new Boolean(true)}]
-                    )
-            );
+        isEqual(
+            [{a: 1}, {b: true}],
+            [{a: new Number(1)}, {b: new Boolean(true)}]
+        )
+    );
   });
 
   test("returns true for equal custom entities and circular structures (from test data)", function () {
@@ -186,7 +188,9 @@ suite("#isEqual", function () {
     assert.isFalse(isEqual({a: 1}, {b: 1}));
 
     // different function references should not be equal
-    assert.isFalse(isEqual(function () {}, function () {}));
+    assert.isFalse(isEqual(function () {
+    }, function () {
+    }));
 
     // test data objects
     assert.isFalse(isEqual(data.entity1, data.entity3));

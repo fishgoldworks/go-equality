@@ -1,47 +1,79 @@
 {
-    "name": "go-equality",
-    "description": "Equality checking functions that work for both primitive types and objects, including nested objects and cyclic objects with a circular reference.",
-    "author": "Michael Ko",
-    "email": "koyote130708@gmail.com",
-    "version": "1.1.0",
-    "license": "MIT",
-    "keywords": [
-        "equal",
-        "deep equal",
-        "loose equal",
-        "strict equal",
-        "loosely equal",
-        "strictly equal",
-        "equality", 
-        "deep equality", 
-        "loose equality", 
-        "strict equality",
-        "equality check", 
-        "check equality"
-    ],
-    "homepage": "https://github.com/koyote130708/go-equality",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/koyote130708/go-equality.git"
+  "name": "go-equality",
+  "description": "Equality checking functions that work for both primitive types and objects, including nested objects and cyclic objects with a circular reference.",
+  "author": "Michael Ko",
+  "email": "koyote130708@gmail.com",
+  "version": "2.0.0",
+  "license": "LGPL-3.0-only",
+  "keywords": [
+    "equal",
+    "deep equal",
+    "loose equal",
+    "strict equal",
+    "loosely equal",
+    "strictly equal",
+    "equality",
+    "deep equality",
+    "loose equality",
+    "strict equality",
+    "equality check",
+    "check equality"
+  ],
+  "homepage": "https://github.com/koyote130708/go-equality",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/koyote130708/go-equality.git"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "docs": "node scripts/docs.js",
+    "test": "node scripts/test.js",
+    "test:docs": "node scripts/docs.js --check && node --test scripts/test-docs.js",
+    "test:types": "tsc --project test/types/tsconfig.json",
+    "test:build": "node --test scripts/test-build.js",
+    "test:artifacts": "node scripts/test-artifacts.js",
+    "test:loaders": "node scripts/test-loaders.js",
+    "test:package": "node scripts/test-package.js",
+    "test:memory": "node scripts/test-memory.js",
+    "test:stress": "node scripts/stress.js",
+    "test:browser": "python scripts/test-browser.py",
+    "coverage": "npm test -- --experimental-test-coverage --test-coverage-include=\"src/**\"",
+    "verify": "npm run build && npm run test:docs && npm run coverage && npm run test:types && npm run test:build && npm run test:artifacts && npm run test:package && npm run test:memory",
+    "verify:all": "npm run verify && npm run test:browser",
+    "benchmark": "node scripts/benchmark.js",
+    "benchmark:custom": "node scripts/benchmark-custom.js",
+    "benchmark:memory": "node scripts/benchmark-memory.js",
+    "prepack": "npm run verify",
+    "prepublishOnly": "npm run verify:all"
+  },
+  "devDependencies": {
+    "acorn": "8.15.0",
+    "terser": "5.51.2",
+    "typescript": "5.8.3"
+  },
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "types": "index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "src/*.js",
+    "dist/go-equality.js",
+    "dist/go-equality.min.js",
+    "README.md",
+    "LICENSE.md",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
     },
-    "main": "index.js",
-    "scripts": {
-        "build": "npm run bundle & npm run minify",
-        "bundle": "webpack build --mode=none --progress --entry ./index.js -o ./dist --output-filename go-equality.js --output-library-name-root=Equality --output-library-type=umd --output-global-object=this",
-        "minify": "uglifyjs ./dist/go-equality.js -c -m --source-map -o ./dist/go-equality.min.js",
-        "test": "mocha -u tdd test/*.js",
-        "coverage": "c8 --clean npm run test",
-        "docs": "documentation readme index.js --section=Documentation",
-        "docs:html": "documentation build index.js -f html -o docs"
-    },
-    "devDependencies": {
-        "c8": "^7.12.0",
-        "chai": "^4.3.6",
-        "documentation": "^14.0.0",
-        "mocha": "^10.0.0",
-        "uglify-js": "^3.17.3",
-        "webpack": "^5.74.0",
-        "webpack-cli": "^4.10.0"
-    },
-    "engine": "node >= 0.10"
+    "./dist/go-equality.js": "./dist/go-equality.js",
+    "./dist/go-equality.min.js": "./dist/go-equality.min.js",
+    "./package.json": "./package.json"
+  }
 }

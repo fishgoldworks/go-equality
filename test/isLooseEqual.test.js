@@ -9,9 +9,11 @@
 
 "use strict";
 
-var assert = require("chai").assert;
-var isLooseEqual = require("../src/isLooseEqual");
-var data = require("./data/testData");
+const { describe: suite, it: test } = require("node:test");
+const strictAssert = require("node:assert/strict");
+const assert = { isTrue: value => strictAssert.equal(value, true), isFalse: value => strictAssert.equal(value, false) };
+var isLooseEqual = require("./helpers/api").isLooseEqual;
+var data = require("./data/test-data");
 
 suite("#isLooseEqual", function () {
   // -------------------------------------------------------------------------
@@ -79,9 +81,12 @@ suite("#isLooseEqual", function () {
     assert.isFalse(isLooseEqual(new Number(NaN), new Number(1)));
     assert.isFalse(isLooseEqual(new Number(1), new Number(NaN)));
 
-    // cross-type wrappers
-    assert.isFalse(isLooseEqual(new Number(1), new String("1")));
-    assert.isFalse(isLooseEqual(new Boolean(true), new Number(1)));
+
+  });
+
+  test("normalizes both sides of cross-type wrappers (v2 correction)", function () {
+    assert.isTrue(isLooseEqual(new Number(1), new String("1")));
+    assert.isTrue(isLooseEqual(new Boolean(true), new Number(1)));
   });
 
   test("returns true for equal primitive vs boxed primitive values (loose)", function () {
@@ -143,50 +148,23 @@ suite("#isLooseEqual", function () {
   test("returns true for deeply equal plain objects and arrays (loose semantics)", function () {
     assert.isTrue(isLooseEqual([], []));
     assert.isTrue(isLooseEqual([1, 2, 3], [1, 2, 3]));
-    assert.isTrue(
-            isLooseEqual(
-                    [[false], [1, 2], ["a", "b", "c"]],
-                    [[false], [1, 2], ["a", "b", "c"]]
-                    )
-            );
+    assert.isTrue(isLooseEqual([[false], [1, 2], ["a", "b", "c"]], [[false], [1, 2], ["a", "b", "c"]]));
 
     assert.isTrue(isLooseEqual({}, {}));
 
     // null vs undefined treated as loose-equal
     assert.isTrue(isLooseEqual({a: null}, {a: undefined}));
 
-    assert.isTrue(
-            isLooseEqual(
-                    {a: 1, b: "abc", c: true},
-                    {a: 1, b: "abc", c: true}
-            )
-            );
+    assert.isTrue(isLooseEqual({a: 1, b: "abc", c: true}, {a: 1, b: "abc", c: true}));
 
     // property order should not matter
-    assert.isTrue(
-            isLooseEqual(
-                    {a: 1, b: "abc", c: true},
-                    {b: "abc", a: 1, c: true}
-            )
-            );
+    assert.isTrue(isLooseEqual({a: 1, b: "abc", c: true}, {b: "abc", a: 1, c: true}));
 
     // boxed values inside objects/arrays (loose)
-    assert.isTrue(
-            isLooseEqual(
-                    {a: 1, b: "abc", c: true},
-                    {
-                      a: new Number(1),
-                      b: new String("abc"),
-                      c: new Boolean(true)
-                    }
-            )
-            );
-    assert.isTrue(
-            isLooseEqual(
-                    [{a: 1}, {b: true}],
-                    [{a: new Number(1)}, {b: new Boolean(true)}]
-                    )
-            );
+    assert.isTrue(isLooseEqual({a: 1, b: "abc", c: true}, {
+      a: new Number(1), b: new String("abc"), c: new Boolean(true)
+    }));
+    assert.isTrue(isLooseEqual([{a: 1}, {b: true}], [{a: new Number(1)}, {b: new Boolean(true)}]));
   });
 
   test("returns true for loose-equal custom entities and circular structures (from test data)", function () {
@@ -314,14 +292,8 @@ suite("#isLooseEqual", function () {
       this.skip();
     }
 
-    var m1 = new Map([
-      ["a", 1],
-      ["b", 2]
-    ]);
-    var m2 = new Map([
-      ["a", 1],
-      ["b", 3]
-    ]);
+    var m1 = new Map([["a", 1], ["b", 2]]);
+    var m2 = new Map([["a", 1], ["b", 3]]);
     var m3 = new Map([["a", 1]]);
     var m4 = new Map([["c", 1]]);
 

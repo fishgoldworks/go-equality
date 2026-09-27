@@ -1,0 +1,51 @@
+name: Verify
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run docs
+      - name: Check generated documentation
+        run: git diff --exit-code -- README.md
+      - run: npm run verify
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: ['chromium', 'firefox', 'webkit']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: test/browser/requirements.txt
+      - run: npm ci
+      - run: npm run build
+      - run: python -m pip install -r test/browser/requirements.txt
+      - run: python -m playwright install --with-deps ${{ matrix.browser }}
+      - run: npm run test:browser -- --browser ${{ matrix.browser }} --output browser-results.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-${{ matrix.browser }}
+          path: browser-results.json
+          if-no-files-found: warn

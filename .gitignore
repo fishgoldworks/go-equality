@@ -1,3 +1,7 @@
+node_modules/
+coverage/
+*.tgz
+.tmp/
+.idea/
+.DS_Store
 nbproject
-node_modules
-**/.tmp
