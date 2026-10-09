@@ -3,11 +3,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { minify_sync: minifyJavaScript } = require('terser');
 const acorn = require('acorn');
-const root = path.resolve(__dirname, '..');
-const destination = path.join(root, 'dist');
+const { root, packageRoot: destination, consumerFiles, consumerManifest } = require('./package-layout');
 const metadata = require('../package.json');
-const banner = '/*! go-equality v' + metadata.version + ' | Copyright (c) 2022-2026 Michael Ko | LGPL-3.0-only */';
-const parse = (text) => acorn.parse(text, { ecmaVersion: 2022, sourceType: 'script' });
+const license = fs.readFileSync(path.join(root, 'LICENSE.md'), 'utf8').replace(/\r\n/g, '\n').trim();
+const banner = `/*! go-equality v${metadata.version} | ${metadata.license}\n\n${license}\n*/`;
+const parse = (text) => acorn.parse(text, { ecmaVersion: 2017, sourceType: 'script' });
 
 function walk(node, visit) {
   if (!node || typeof node !== 'object') {
@@ -88,7 +88,7 @@ ${modules.join(',\n')}
 function minify(output) {
   const text = fs.readFileSync(path.join(output, 'go-equality.js'), 'utf8');
   const { code } = minifyJavaScript(text, {
-    ecma: 2022,
+    ecma: 2017,
     compress: {
       // Preserve document.all's typeof/undefined distinction and loose equality.
       comparisons: false,
@@ -133,7 +133,18 @@ function replaceDistribution(temporary) {
     throw error;
   }
   if (hadPrevious) {
-    fs.rmSync(previous, { recursive: true, force: true });
+    try {
+      fs.rmSync(previous, { recursive: true, force: true });
+    } catch (cleanupError) {
+      throw new Error(
+        'New distribution is active at ' +
+          destination +
+          '; cleanup of previous distribution failed at ' +
+          previous +
+          '; any remaining backup may be incomplete',
+        { cause: cleanupError }
+      );
+    }
   }
 }
 
@@ -145,9 +156,23 @@ function main() {
   let buildError;
   let buildFailed = false;
   try {
-    bundle(temporary);
-    minify(temporary);
-    require('./test-loaders')(temporary);
+    for (const file of consumerFiles) {
+      fs.mkdirSync(path.dirname(path.join(temporary, file)), { recursive: true });
+      fs.copyFileSync(path.join(root, file), path.join(temporary, file));
+    }
+    fs.mkdirSync(path.join(temporary, 'src'));
+    for (const file of fs.readdirSync(path.join(root, 'src'), { withFileTypes: true })) {
+      if (file.isFile() && file.name.endsWith('.js')) {
+        fs.copyFileSync(path.join(root, 'src', file.name), path.join(temporary, 'src', file.name));
+      }
+    }
+    fs.writeFileSync(path.join(temporary, 'package.json'), JSON.stringify(consumerManifest(), null, 2) + '\n');
+    const bundles = path.join(temporary, 'dist');
+    bundle(bundles);
+    minify(bundles);
+    require('./test-loaders')(bundles);
+    const api = require(path.join(temporary, 'index.js'));
+    require('node:assert/strict').deepEqual(Object.keys(api).sort(), Object.keys(require('../index.js')).sort());
     replaceDistribution(temporary);
     console.log('Built complete distribution successfully.');
   } catch (error) {

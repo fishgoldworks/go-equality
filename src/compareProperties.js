@@ -1,11 +1,9 @@
 'use strict';
 
-const hasOwn = Object.prototype.hasOwnProperty;
-
 function ownKeys(value, kind) {
   const keys = Reflect.ownKeys(value);
   if (kind === 'Arguments') {
-    // Strict arguments.callee is a poison accessor, not application state.
+    // Reading arguments.callee in strict mode throws; it is engine bookkeeping.
     return keys.filter((key) => key !== 'callee' && key !== Symbol.iterator);
   }
   return keys;
@@ -20,14 +18,20 @@ module.exports = function compareProperties(node, context, kind, length = 0, cus
     return false;
   }
   // Real typed arrays enumerate validated element indices first, followed by
-  // other strings and symbols (ECMA-262 [[OwnPropertyKeys]]). The numeric
-  // payload was already checked; skip it without filtering/converting every key.
+  // other strings and symbols (ECMA-262 [[OwnPropertyKeys]]). Their elements
+  // were already compared, so skip those keys without filtering each one.
   const start = kind === 'TypedArray' ? length : 0;
+  let otherKeySet;
   for (let i = start; i < keys.length; i++) {
-    // The corresponding own key already proves membership in the usual
-    // same-order case. Different insertion orders still compare unordered.
-    if (keys[i] !== otherKeys[i] && !hasOwn.call(b, keys[i])) {
-      return false;
+    // Compare the captured key lists. A proxy can expose keys that disagree
+    // with its property descriptors, so a separate own-property check can differ.
+    if (keys[i] !== otherKeys[i]) {
+      if (!otherKeySet) {
+        otherKeySet = new Set(otherKeys);
+      }
+      if (!otherKeySet.has(keys[i])) {
+        return false;
+      }
     }
   }
   if (custom) {

@@ -1,12 +1,14 @@
 'use strict';
-// Each sample uses a fresh child process. This measures process high-water RSS
-// and post-call heap use, NOT isolated peak comparator heap or warm-JIT timing.
+// Each sample uses a fresh child process. Measure peak process memory (RSS)
+// and heap use after the call. These include overhead beyond the comparator.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { performance } = require('node:perf_hooks');
+const resolveLibrary = require('./resolve-library');
+const benchmarkOutput = require('./benchmark-output');
 
 if (process.argv[2] === '--child') {
   const [, , , entry, kind, sizeText] = process.argv;
@@ -30,7 +32,8 @@ if (process.argv[2] === '--child') {
       heapDeltaBytes: after.heapUsed - before.heapUsed,
       rssBeforeBytes: before.rss,
       maxRssKiB: process.resourceUsage().maxRSS,
-      durationMs
+      durationMs,
+      inputFiles: benchmarkOutput.inputFiles()
     })
   );
 } else {
@@ -48,14 +51,21 @@ if (process.argv[2] === '--child') {
   if (!Number.isSafeInteger(samples) || samples < 1 || !Number.isSafeInteger(size) || size < 1) {
     throw new Error('samples and size must be positive safe integers.');
   }
-  const versions = options.baseline
-    ? [
-        { name: 'baseline', entry: path.resolve(options.baseline) },
-        { name: 'current', entry: path.resolve(__dirname, '..') }
-      ]
-    : [{ name: 'current', entry: path.resolve(__dirname, '..') }];
+  const versions = (
+    options.baseline
+      ? [
+          { name: 'baseline', entry: path.resolve(options.baseline) },
+          { name: 'current', entry: path.resolve(__dirname, '..') }
+        ]
+      : [{ name: 'current', entry: path.resolve(__dirname, '..') }]
+  ).map((version) => ({
+    name: version.name,
+    ...resolveLibrary(version.entry)
+  }));
+  const output = benchmarkOutput(options.output, versions);
   const median = (values) => values.toSorted((a, b) => a - b)[Math.floor(values.length / 2)];
   const results = [];
+  const loadedFiles = new Set();
   for (const kind of ['Set', 'Map']) {
     const groups = versions.map((version) => ({ ...version, samples: [] }));
     for (let sample = 0; sample < samples; sample++) {
@@ -69,7 +79,11 @@ if (process.argv[2] === '--child') {
           throw child.error;
         }
         assert.equal(child.status, 0, child.stdout + child.stderr);
-        group.samples.push(JSON.parse(child.stdout));
+        const { inputFiles, ...measurement } = JSON.parse(child.stdout);
+        for (const filename of inputFiles) {
+          loadedFiles.add(filename);
+        }
+        group.samples.push(measurement);
       }
     }
     const row = { kind, size };
@@ -91,12 +105,12 @@ if (process.argv[2] === '--child') {
     date: new Date().toISOString(),
     samples,
     note: 'Fresh process per sample; version order alternates. GC before comparison. maxRSS includes Node startup, fixtures, and comparator. Heap delta is after-call minus before-call, not peak heap; intervening GC affects it. Durations are cold single calls, not speed benchmarks.',
-    versions: versions.map((v) => ({ name: v.name, version: require(path.join(v.entry, 'package.json')).version })),
+    versions: versions.map((v) => ({ name: v.name, version: v.version })),
     results
   };
   const json = JSON.stringify(report, null, 2) + '\n';
-  if (options.output) {
-    fs.writeFileSync(path.resolve(options.output), json);
+  if (output) {
+    fs.writeFileSync(benchmarkOutput(output, versions, loadedFiles), json);
   }
   console.log(json);
 }

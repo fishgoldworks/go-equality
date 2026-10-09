@@ -1,10 +1,23 @@
+# Dependencies and package-manager state
 node_modules/
-coverage/
-*.tgz
-.tmp/
-.idea/
-.DS_Store
-nbproject
 
-# Reviewed build-tool artifact; keep installation independent of a registry.
-!vendor/fishgold-eslint-config-0.2.0.tgz
+# Generated distributions and documentation
+/artifacts/
+/package/
+
+# Build staging and temporary files
+.tmp/
+/.go-equality-build-*/
+# Local playgrounds retained for manual experimentation.
+/src/temp/
+
+# Coverage and local test results
+/coverage/
+
+# Package archives
+*.tgz
+
+# Editor and operating-system files
+.DS_Store
+/.idea/
+/nbproject/

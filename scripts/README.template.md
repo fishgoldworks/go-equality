@@ -1,838 +1,250 @@
 # Go Equality
 
-**Deep equality utilities for JavaScript.**
+**Deep equality utilities for JavaScript, with default, strict and loose modes plus custom comparison rules.**
 
-[![Documentation](https://img.shields.io/badge/docs-{{API_COUNT}}%20call%20forms-blue.svg)](#documentation)
-[![License](https://img.shields.io/badge/license-LGPLv3-green.svg)](LICENSE.md)
+[![Source line coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#development)
+[![Documentation](https://img.shields.io/badge/docs-100%25-brightgreen.svg)](docs/API.md)
 [![Donate](https://img.shields.io/badge/donate-blue.svg)](https://www.paypal.com/donate/?business=T7Q29NNMZVW98&no_recurring=0&item_name=Support+Go+Equality&currency_code=USD)
 
-- **version**: {{VERSION}}
-- **license**: {{LICENSE}}
+- **Version:** [{{VERSION}}](CHANGELOG.md)
+- **Licence:** [{{LICENSE}}](LICENSE.md)
+
+Compare arrays and supported objects by their nested contents, even when they are separate instances. Choose how primitive types and wrappers are treated, or supply a custom comparison rule. Circular references, Dates, regular expressions, Maps, Sets, typed arrays and binary buffers are supported; see [supported types](#supported-types) for their comparison rules.
+
+No runtime dependencies. TypeScript declarations included.
+
+**[View full API documentation](docs/API.md)**
+
+## Contents
+
+{{TOC}}
 
 ## Installation
 
+Using npm:
+
 ```sh
-npm i go-equality
+npm install go-equality
 ```
 
-or
+Using Yarn:
 
 ```sh
 yarn add go-equality
 ```
 
-Node.js **{{NODE_MIN_VERSION}} or later** is required for Node usage. Browser bundles require modern JavaScript features, including `BigInt`, `Map`, `Set`, `Reflect.ownKeys`, and `Object.hasOwn`. The package includes CommonJS exports, ES module interoperability, TypeScript declarations, and standalone browser bundles. There are no runtime package dependencies.
+### Runtime support
+
+| Environment | Requirement                                                                                                                            |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| CommonJS    | Node.js {{NODE_MIN_VERSION}} or later through the package root.                                                                        |
+| ES modules  | Native default and named imports work on Node.js 14.13.0 or later, or Node.js 12.20.0+ within 12.x, through CommonJS interoperability. |
+| Browser     | ES2017 syntax plus `Map`, `Set`, `Symbol`, `Reflect.ownKeys` and `Reflect.apply`.                                                      |
+
+BigInt, BigInt typed arrays, `SharedArrayBuffer` and newer regular-expression flags are optional native features. Missing optional constructors or methods do not stop the package loading or comparing unrelated values. The [native capability table](docs/API.md#native-runtime-capabilities) lists required APIs and explains identity-only fallbacks and errors when optional inspection is unavailable. Examples using `1n` require a runtime that can parse bigint literals. The library installs no global polyfills. There is no standalone browser ES module build.
+
+For Node VM or sandbox comparisons involving host Buffers, supply the host's trusted `Buffer` constructor as the context's `Buffer` global before loading the library. Native Buffer detection does not use shape guessing. See [instance equality hooks](docs/API.md#instance-equality-hooks) for this environment requirement.
 
 ## Usage
 
-### ES6
+### ES modules
 
+<!-- prettier-ignore -->
 ```javascript
-import * as Equality from 'go-equality';
+import Eq from 'go-equality';
 
-Equality.isEqual({ id: 1 }, { id: 1 }); // true
-Equality.isLooseEqual(1, '1'); // true
-Equality.isStrictEqual(1, Object(1)); // false
-Equality.isEqual.strict(1, Object(1)); // false
-Equality.isEqual.loose(1, '1'); // true
+Eq.isEqual({ id: 1 }, { id: 1 });  // => true
+Eq.isLooseEqual(1, '1');           // => true
+Eq.isStrictEqual(1, Object(1));    // => false
+Eq.isEqual.strict(1, Object(1));   // => false
+Eq.isEqual.loose(1, '1');          // => true
 ```
 
-or
+Or import individual functions:
 
+<!-- prettier-ignore -->
 ```javascript
 import { isEqual, isLooseEqual, isStrictEqual } from 'go-equality';
 
-isEqual({ id: 1 }, { id: 1 }); // true
-isLooseEqual(1, '1'); // true
-isStrictEqual(1, Object(1)); // false
+isEqual({ id: 1 }, { id: 1 });     // => true
+isLooseEqual(1, '1');              // => true
+isStrictEqual(1, Object(1));       // => false
 ```
 
-### Node
+### CommonJS
 
+<!-- prettier-ignore -->
 ```javascript
-const Equality = require('go-equality');
+const Eq = require('go-equality');
 
-Equality.isEqual([1, 2, 3], [1, 2, 3]); // true
-Equality.isLooseEqual(null, undefined); // true
-Equality.isStrictEqual(1, '1'); // false
+Eq.isEqual([1, 2, 3], [1, 2, 3]);  // => true
+Eq.isLooseEqual(null, undefined);  // => true
+Eq.isStrictEqual(1, '1');          // => false
 ```
 
-or
+Or import individual functions:
 
+<!-- prettier-ignore -->
 ```javascript
 const { isEqual, isLooseEqual, isStrictEqual } = require('go-equality');
 
-isEqual([1, 2, 3], [1, 2, 3]); // true
-isLooseEqual(null, undefined); // true
-isStrictEqual(1, '1'); // false
+isEqual([1, 2, 3], [1, 2, 3]);     // => true
+isLooseEqual(null, undefined);     // => true
+isStrictEqual(1, '1');             // => false
 ```
 
-### Web browser
+### Browser
 
-Load the included browser bundle to use the global `Equality` object:
+Serve either included browser bundle from your application. Set the script URL to its served location, then alias the global `Equality` object as `Eq`:
 
+<!-- prettier-ignore -->
 ```html
 <script src="dist/go-equality.min.js"></script>
 <script>
-  const { isEqual, isLooseEqual, isStrictEqual } = Equality;
+  const Eq = Equality;
 
-  isEqual([1, 2, 3], [1, 2, 3]); // true
-  isLooseEqual(1, '1'); // true
-  isStrictEqual(1, Object(1)); // false
+  Eq.isEqual([1, 2, 3], [1, 2, 3]);  // => true
+  Eq.isLooseEqual(1, '1');           // => true
+  Eq.isStrictEqual(1, Object(1));    // => false
 </script>
 ```
 
-The readable bundle is `dist/go-equality.js`. Both standalone UMD bundles contain the same implementation and also support AMD loaders. The library makes no external requests. From the source checkout, run `npm ci` and `npm run build` to regenerate both bundles.
+The installed package includes `dist/go-equality.js` and `dist/go-equality.min.js`. Both standalone UMD bundles contain the same implementation and also support AMD loaders. The library makes no external requests.
 
-### Grouped variations
+**Import notes:** Use the package's default export or named root exports. Individual-function subpaths such as `go-equality/isEqual` and `go-equality/src/isEqual.js` are not public entry points. See [TypeScript](#typescript) for declarations and typing behaviour.
 
-```javascript
-import { isEqual, isLooseEqual, isStrictEqual } from 'go-equality';
+## API summary
 
-isEqual.strict({ page: 2 }, { page: '2' }); // false
-isEqual.loose({ page: 2 }, { page: '2' }); // true
-isEqual.strict === isStrictEqual; // true
-isEqual.loose === isLooseEqual; // true
-```
+See the **[full API documentation](docs/API.md)** for parameters,
+return values, errors and examples.
 
-Both import styles remain supported; the standalone exports are not deprecated.
-The attached methods are stable, non-enumerable, read-only properties and do not
-depend on `this`. The root export remains a namespace containing `isEqual`,
-`isLooseEqual`, and `isStrictEqual`, not a callable default export.
+{{API_SUMMARY}}
 
-### Individual functions
+The attached methods are read-only, non-enumerable properties of `isEqual`. The root export object is not callable. For custom strict or loose comparison, pass `{ mode: 'strict' }` or `{ mode: 'loose' }` to `isEqual.custom()` or `isEqual.create()`.
 
-Select individual functions through the package root:
+## Behaviour
 
-```javascript
-import { isEqual } from 'go-equality';
+### Comparison modes
 
-isEqual({ name: 'Michael' }, { name: 'Michael' }); // true
-```
+All three modes compare nested contents of arrays and supported objects, so separate objects can be equal. Choose a mode according to which differences should matter:
 
-or
+- **Default:** compare primitive wrappers by their contained values, so `Object(1)` matches `1`.
+- **Loose:** also allow primitive conversions, such as `1` matching `'1'`, including inside nested data.
+- **Strict:** preserve primitive types and keep a wrapper distinct from its primitive value. Two wrapper objects can still compare equal.
 
-```javascript
-const { isEqual } = require('go-equality');
+A **primitive wrapper** is an object holding a primitive value, such as `Object(1)`. **Unboxed** below means that only the contained primitive value is compared. **Coercion** means converting primitive values for comparison.
 
-isEqual({ name: 'Michael' }, { name: 'Michael' }); // true
-```
+| Rule                         | Default: `isEqual` | Loose: `isLooseEqual` | Strict: `isStrictEqual` |
+| ---------------------------- | ------------------ | --------------------- | ----------------------- |
+| Primitive types              | Must match         | May coerce            | Must match              |
+| Primitive wrappers           | Unboxed            | Unboxed               | Preserved               |
+| Ordinary object constructors | Must match         | Ignored               | Must match              |
 
-Dedicated subpaths such as `go-equality/isEqual` and `go-equality/src/isEqual.js` are not public exports. Use the root namespace or named imports shown above; this package does not include a standalone browser ES module build.
+In every mode, `NaN` equals `NaN`, and positive and negative zero are equal. Loose mode does not convert arbitrary objects to primitives. Customisers and supported instance hooks can override the standard rules; see the [full comparison rules](docs/API.md#comparison-rules).
 
-The comparison declarations accept two `unknown` values and return `boolean`; `isEqual.create()` returns a reusable binary comparator. Customizer, mode, options, and comparator types are exported for TypeScript consumers. These functions check equality; they are not TypeScript type guards.
+For objects reaching structural comparison, default and strict modes check the resolved `constructor` property values with `===`, not allocation-time class identity. Loose mode skips that precheck but still compares an own constructor field as data. See [objects and property keys](docs/API.md#objects-and-property-keys).
 
-## Documentation
+### Supported types
 
-All **{{API_COUNT}} public call forms** are documented below, including the three standalone exports, two attached mode aliases, custom comparison, and comparator creation. Each entry includes parameters, usage examples, and return values. Examples assume the functions have been imported from `go-equality`, unless an import is shown.
+- Ordinary objects, arrays, null-prototype dictionaries and custom class instances compare their own properties, including non-enumerable and symbol-keyed properties. Array order matters, and a hole differs from explicit `undefined`.
+- Dates, regular expressions, Maps, Sets, typed arrays, Buffers, ArrayBuffers, SharedArrayBuffers and DataViews compare their relevant contents. `Map` and `Set` order does not matter; matching is one-to-one. Regular expressions include `lastIndex`.
+- Promises, WeakMaps, WeakSets, functions and other unsupported values normally require the same reference. Private class fields are not inspected automatically.
 
-All three standard modes compare nested supported values, circular references, and unordered Maps and Sets. Choose `isEqual` for deep value equality with primitive wrappers unboxed, `isLooseEqual` for primitive coercion, or `isStrictEqual` to preserve primitive types and wrappers. The [comparison rules](#comparison-rules) explain the differences.
-
-Ordinary mismatches return `false`. Getters, proxy traps, and custom callbacks or `equals()` methods may execute user code and throw. Caller callbacks must return `true`, `false`, or `undefined`; instance `equals()` methods must return a boolean. Invalid configuration or results throw `TypeError`. See [errors and supported inputs](#errors-and-supported-inputs).
-
-#### Table of Contents
-
-{{TOC}}
-
-### Equality
-
-#### isEqual
-
-Checks whether two values are deeply equal. Primitive types must match, but genuine Number, String, Boolean, BigInt, and Symbol wrappers are normalized to their underlying values. `NaN` equals `NaN`, and positive and negative zero are equal.
-
-Objects are compared by constructor and own property keys and values, including non-enumerable and symbol-keyed properties. Supported built-ins also compare their relevant contents. Maps and Sets do not need the same insertion order.
-
-##### Parameters
-
-- `value` **any** The first value to compare.
-- `other` **any** The second value to compare.
-
-##### Examples
-
-```javascript
-isEqual(1, 1); // true
-isEqual(1, new Number(1)); // true
-isEqual(Object(1n), 1n); // true
-isEqual(NaN, NaN); // true
-isEqual(-0, +0); // true
-isEqual([1, 2, 3], [1, 2, 3]); // true
-isEqual({ a: 1, b: 2 }, { b: 2, a: 1 }); // true
-```
-
-```javascript
-isEqual(1, '1'); // false
-isEqual(null, undefined); // false
-isEqual({}, { a: undefined }); // false
-isEqual([1, 2, 3], [2, 3, 1]); // false
-isEqual(Array(1), [undefined]); // false
-isEqual(new Date(0), new Date(1)); // false
-isEqual(
-  function () {},
-  function () {}
-); // false
-isEqual(Symbol('abc'), Symbol('abc')); // false
-```
-
-```javascript
-const first = { user: { id: 1 }, roles: ['reader', 'editor'] };
-const second = { roles: ['reader', 'editor'], user: { id: 1 } };
-
-isEqual(first, second); // true
-isEqual(new Set([{ id: 1 }, { id: 2 }]), new Set([{ id: 2 }, { id: 1 }])); // true
-isEqual(new Map([[{ id: 1 }, 'a']]), new Map([[{ id: 1 }, 'a']])); // true
-isEqual(new Map([['a', 1]]), new Map([['a', 2]])); // false
-```
-
-Returns **boolean** `true` when the values are deeply equal under these rules; otherwise `false`.
-
-**Notes**
-
-Wrapper normalization is value-oriented: wrapper decorations, overridden `valueOf`, and wrapper `equals()` methods are ignored. Use [isStrictEqual](#isstrictequal) when a wrapper must remain distinct from its primitive value or when its own properties matter. Distinct functions and unsupported opaque objects are not structurally compared. For supported custom equality and its exceptions, see [custom equality](#custom-equality) and [errors and supported inputs](#errors-and-supported-inputs).
-
-#### isLooseEqual
-
-Checks whether two values are deeply equal with **primitive coercion**. Genuine wrappers are normalized on both sides. Ordinary objects do not need to share a constructor.
-
-Unlike JavaScript's general `==` operator, arbitrary arrays, dates, and objects are not converted into primitives. Built-in kinds still matter: a Map is not a Set, and different typed-array element kinds are not interchangeable.
-
-##### Parameters
-
-- `value` **any** The first value to compare.
-- `other` **any** The second value to compare.
-
-##### Examples
-
-```javascript
-isLooseEqual(null, undefined); // true
-isLooseEqual(1, '1'); // true
-isLooseEqual(1, 1n); // true
-isLooseEqual(1, true); // true
-isLooseEqual(new Number(1), new String('1')); // true
-isLooseEqual({ enabled: true }, { enabled: 1 }); // true
-isLooseEqual([1, false], ['1', 0]); // true
-isLooseEqual(new Set([0, '']), new Set(['', '0'])); // true
-isLooseEqual(NaN, NaN); // true
-```
-
-```javascript
-class First {
-  constructor() {
-    this.value = 1;
-  }
-}
-
-class Second {
-  constructor() {
-    this.value = '1';
-  }
-}
-
-isLooseEqual(new First(), new Second()); // true
-isEqual(new First(), new Second()); // false
-isStrictEqual(new First(), new Second()); // false
-```
-
-```javascript
-isLooseEqual(true, 'true'); // false
-isLooseEqual(false, undefined); // false
-isLooseEqual([], 0); // false
-isLooseEqual({ valueOf: () => 1 }, 1); // false
-isLooseEqual(new Map(), new Set()); // false
-isLooseEqual(new Uint8Array([1]), new Uint16Array([1])); // false
-```
-
-Returns **boolean** `true` when the values are deeply equal under the loose rules; otherwise `false`.
-
-**Notes**
-
-Coercion applies recursively to primitive values, including collection members and keys. It does not ignore missing own properties, array order, or built-in element kinds. Loose equality is not transitive: `''` equals `0`, and `0` equals `'0'`, but `''` does not equal `'0'`. Map/Set matching finds one-to-one assignments without assuming transitivity or committing permanently to a greedy match. See [comparison rules](#comparison-rules) and [errors and supported inputs](#errors-and-supported-inputs).
-
-#### isStrictEqual
-
-Checks whether two values are deeply equal while preserving primitive types, primitive wrappers, and constructors. Wrapper payloads and own properties are compared rather than unboxed and discarded.
-
-This is **not** an alias for `===`: separate objects can be structurally equal, and `NaN` equals `NaN`. Positive and negative zero remain equal.
-
-##### Parameters
-
-- `value` **any** The first value to compare.
-- `other` **any** The second value to compare.
-
-##### Examples
-
-```javascript
-isStrictEqual(1, 1); // true
-isStrictEqual(NaN, NaN); // true
-isStrictEqual(-0, +0); // true
-isStrictEqual(new Number(1), new Number(1)); // true
-isStrictEqual(new Number(NaN), new Number(NaN)); // true
-isStrictEqual([1, 2, 3], [1, 2, 3]); // true
-isStrictEqual({ a: 1, b: 2 }, { b: 2, a: 1 }); // true
-```
-
-```javascript
-isStrictEqual(1, '1'); // false
-isStrictEqual(1, new Number(1)); // false
-isStrictEqual(null, undefined); // false
-isStrictEqual({}, { a: undefined }); // false
-isStrictEqual([1], ['1']); // false
-isStrictEqual(
-  function () {},
-  function () {}
-); // false
-isStrictEqual(Symbol('abc'), Symbol('abc')); // false
-```
-
-```javascript
-const first = Object.assign(new Number(1), { label: 'first' });
-const second = Object.assign(new Number(1), { label: 'second' });
-
-isEqual(first, second); // true
-isLooseEqual(first, second); // true
-isStrictEqual(first, second); // false
-```
-
-Returns **boolean** `true` when the values are deeply equal under the strict rules; otherwise `false`.
-
-**Notes**
-
-Strict mode still performs deep comparisons and ignores Map/Set insertion order. It does not require identical object references, identical property descriptor flags, or identical reference-sharing topology. Custom hooks can override structural and constructor rules when both return `true`. See [custom equality](#custom-equality), [circular references](#circular-references), and [errors and supported inputs](#errors-and-supported-inputs).
-
-#### isEqual.strict
-
-Checks deep equality with strict mode. This is exactly the same function as
-[isStrictEqual](#isstrictequal), not JavaScript's reference-only `===` operator.
-
-##### Parameters
-
-- `value` **any** The first value to compare.
-- `other` **any** The second value to compare.
-
-##### Examples
-
-```javascript
-isEqual.strict({ status: 'open' }, { status: 'open' }); // true
-isEqual.strict({ page: 2 }, { page: '2' }); // false
-isEqual.strict(1, Object(1)); // false
-isEqual.strict === isStrictEqual; // true
-
-const strictEqual = isEqual.strict;
-strictEqual([1, 2], [1, 2]); // true
-```
-
-Returns **boolean** `true` when the values are deeply equal under the strict rules;
-otherwise `false`.
-
-**Notes**
-
-The property is read-only and non-enumerable. The extracted function works without
-a receiver. See [isStrictEqual](#isstrictequal) for all strict-mode rules and exceptions.
-
-#### isEqual.loose
-
-Checks deep equality with primitive coercion. This is exactly the same function as
-[isLooseEqual](#islooseequal); ordinary objects are not coerced to primitives.
-
-##### Parameters
-
-- `value` **any** The first value to compare.
-- `other` **any** The second value to compare.
-
-##### Examples
-
-```javascript
-isEqual.loose({ page: 2 }, { page: '2' }); // true
-isEqual.loose(null, undefined); // true
-isEqual.loose({ active: true }, { active: 'true' }); // false
-isEqual.loose([], 0); // false
-isEqual.loose === isLooseEqual; // true
-```
-
-Returns **boolean** `true` when the values are deeply equal under the loose rules;
-otherwise `false`.
-
-**Notes**
-
-The property is read-only and non-enumerable. It does not ignore missing keys or
-array order. See [isLooseEqual](#islooseequal) for the full contract.
-
-#### isEqual.custom
-
-Compares two values now using a caller-supplied customizer during deep comparison.
-The customizer may settle a reached pair with `true` or `false`, or return
-`undefined` to delegate that pair to the selected standard mode.
-
-##### Parameters
-
-- `value` **any** The first value to compare.
-- `other` **any** The second value to compare.
-- `customizer` **Function** Required synchronous `(value, other) => boolean | undefined` callback. Receives the original values without an explicit receiver.
-- `options` **Object** Optional configuration object. Its only supported own property is `mode`: `'default'`, `'strict'`, or `'loose'`. An omitted or `undefined` mode selects `'default'`.
-
-##### Examples
-
-A task editor should not become dirty merely because its selected user's display
-name was refreshed. For this form, compare user references by ID, but still detect
-changes to the title, status, or selected user.
-
-```javascript
-function isUserReference(value) {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    value.type === 'user' &&
-    typeof value.id === 'string' &&
-    value.id.length > 0
-  );
-}
-
-function compareUserReferences(left, right) {
-  const leftIsUser = isUserReference(left);
-  const rightIsUser = isUserReference(right);
-  if (!leftIsUser && !rightIsUser) return undefined;
-  return leftIsUser && rightIsUser && left.id === right.id;
-}
-
-const savedTask = {
-  title: 'Fix checkout validation',
-  status: 'open',
-  assignee: { type: 'user', id: 'user-42', displayName: 'Alex Kim' }
-};
-const refreshedTask = {
-  ...savedTask,
-  assignee: { type: 'user', id: 'user-42', displayName: 'Alex K.' }
-};
-const completedTask = { ...refreshedTask, status: 'done' };
-const reassignedTask = {
-  ...refreshedTask,
-  assignee: { type: 'user', id: 'user-99', displayName: 'Sam Lee' }
-};
-
-isEqual(savedTask, refreshedTask); // false
-isEqual.custom(savedTask, refreshedTask, compareUserReferences); // true
-isEqual.custom(savedTask, completedTask, compareUserReferences); // false
-isEqual.custom(savedTask, reassignedTask, compareUserReferences); // false
-```
-
-```javascript
-function ignoreStringCase(left, right) {
-  if (typeof left === 'string' && typeof right === 'string') {
-    return left.toLowerCase() === right.toLowerCase();
-  }
-  return undefined;
-}
-
-isEqual.custom({ label: 'ADMIN' }, { label: 'admin' }, ignoreStringCase); // true
-isEqual.custom(new Set(['ADMIN', 'USER']), new Set(['user', 'admin']), ignoreStringCase); // true
-isEqual.custom({ page: 2 }, { page: '2' }, ignoreStringCase, { mode: 'strict' }); // false
-isEqual.custom({ page: 2 }, { page: '2' }, ignoreStringCase, { mode: 'loose' }); // true
-isEqual.custom(1, 1, () => false); // false
-isEqual.custom(1, 2, () => undefined); // false
-isEqual.custom(1, 2); // throws TypeError
-isEqual.custom(1, 2, () => 'yes'); // throws TypeError
-```
-
-Returns **boolean** `true` or `false` when the comparison completes normally. It
-never returns `undefined` or a new comparator function.
-
-**Notes**
-
-A `true` or `false` result from the customizer settles that pair immediately;
-`false` does not mean fallback. Explicit decisions precede identity, wrapper
-normalization, and instance `equals()` hooks. Returning `undefined` preserves the
-selected mode for that pair. To reuse a configured comparator, use
-[isEqual.create](#isequalcreate). See [caller customizers](#caller-customizers) for
-traversal, matching, error handling and purity requirements.
-
-The task rule above answers whether editable selection data changed, not whether
-complete user records are identical. Do not use it to suppress a UI refresh that
-needs to show the updated display name.
-
-#### isEqual.create
-
-Validates and snapshots custom comparison configuration once, then returns a
-reusable synchronous binary comparator. This creates a function; it does not
-compare inputs yet or modify `isEqual` globally.
-
-##### Parameters
-
-- `customizer` **Function** Required synchronous `(value, other) => boolean | undefined` callback, with the same meaning as [isEqual.custom](#isequalcustom).
-- `options` **Object** Optional configuration object containing only an own `mode`: `'default'`, `'strict'`, or `'loose'`. Defaults to `'default'`.
-
-##### Examples
-
-Define a named comparator once for a task form, then reuse it for dirty-state checks.
-
-```javascript
-function isUserReference(value) {
-  return (
-    value !== null &&
-    typeof value === 'object' &&
-    value.type === 'user' &&
-    typeof value.id === 'string' &&
-    value.id.length > 0
-  );
-}
-
-function compareUserReferences(left, right) {
-  const leftIsUser = isUserReference(left);
-  const rightIsUser = isUserReference(right);
-  if (!leftIsUser && !rightIsUser) return undefined;
-  return leftIsUser && rightIsUser && left.id === right.id;
-}
-
-const isTaskFormEqual = isEqual.create(compareUserReferences, { mode: 'strict' });
-const savedTask = {
-  status: 'open',
-  assignee: { type: 'user', id: 'user-42', displayName: 'Alex Kim' }
-};
-const refreshedTask = {
-  status: 'open',
-  assignee: { type: 'user', id: 'user-42', displayName: 'Alex K.' }
-};
-
-const hasUnsavedChanges = !isTaskFormEqual(savedTask, refreshedTask);
-hasUnsavedChanges; // false
-isTaskFormEqual(savedTask, { ...refreshedTask, status: 'done' }); // false
-isEqual(savedTask, refreshedTask); // false
-typeof isTaskFormEqual === 'function'; // true
-```
-
-```javascript
-const options = { mode: 'strict' };
-const compare = isEqual.create(() => undefined, options);
-options.mode = 'loose';
-
-compare(1, '1'); // false
-isEqual.custom(1, '1', () => undefined, options); // true
-isEqual.create(() => undefined, { mode: 'unknown' }); // throws TypeError
-```
-
-Returns **Function** A plain `(value, other) => boolean` comparator. The returned
-function does not itself have `.strict`, `.loose`, `.custom`, or `.create` methods.
-
-**Notes**
-
-The mode is snapshotted at creation. Later option mutation cannot change this
-comparator; the callback itself and any variables captured by its closure remain
-live. Each invocation has fresh pair, cycle, and matching state. Results and
-compared inputs are not cached across calls, including after an exception.
-Create reusable comparators outside hot loops. Invalid callback results are
-rejected when a comparison actually invokes the callback, not by executing it
-speculatively at creation.
-
-### Comparison rules
-
-These rules apply recursively, not just at the top level. Identical references take the identity fast path; bilateral custom hooks can override structural and constructor comparison as described under [custom equality](#custom-equality). Wrapper normalization has the exceptions described below.
-
-| Behaviour                                              | `isEqual`  | `isLooseEqual` | `isStrictEqual` |
-| ------------------------------------------------------ | ---------- | -------------- | --------------- |
-| Primitive types                                        | Must match | May coerce     | Must match      |
-| Genuine Number/String/Boolean/BigInt/Symbol wrappers   | Unboxed    | Unboxed        | Preserved       |
-| Ordinary object constructors                           | Must match | Ignored        | Must match      |
-| `NaN` compared with `NaN`                              | Equal      | Equal          | Equal           |
-| `+0` compared with `-0`                                | Equal      | Equal          | Equal           |
-| Identical object/function/symbol reference             | Equal      | Equal          | Equal           |
-| Own non-enumerable and symbol properties               | Compared   | Compared       | Compared        |
-| Map/Set insertion order                                | Ignored    | Ignored        | Ignored         |
-| Extra own properties on arrays and supported built-ins | Compared   | Compared       | Compared        |
-
-#### Objects and property keys
-
-Property order and descriptor flags (`enumerable`, `writable`, `configurable`) do not affect equality. An own property must exist on both sides; an inherited property does not substitute for it. Getters are read as values, so accessors can execute user code. Inherited data is ignored, except constructor checking and the custom `equals` protocol. An **own** property named `constructor` remains ordinary compared data, even in loose mode.
-
-```javascript
-const a = Object.defineProperty({}, 'hidden', { value: 1 });
-const b = Object.defineProperty({}, 'hidden', { value: 2 });
-const key = Symbol('id');
-
-isEqual(a, b); // false
-isEqual({ [key]: 1 }, { [key]: 2 }); // false
-isEqual(Object.assign(Object.create(null), { x: 1 }), Object.assign(Object.create(null), { x: 1 })); // true
-```
-
-Object prototypes themselves are not compared. Distinct custom prototypes with the same inherited constructor and the same own data can compare equal. In default/strict mode, objects from different JavaScript realms normally differ because their constructors differ. Loose mode can compare equivalent supported objects across realms.
-
-#### Built-in values
-
-| Value                           | Compared state                                                                                                          |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Arrays                          | Length, existing indices, and other own properties. A hole differs from explicit `undefined`.                           |
-| Arguments                       | Indexed values, length and custom own properties. Engine bookkeeping `callee` and `Symbol.iterator` are omitted.        |
-| Maps                            | A one-to-one matching of complete key/value entries. Keys may match structurally.                                       |
-| Sets                            | A one-to-one matching of members. A candidate cannot be used twice.                                                     |
-| Dates                           | Timestamp; two invalid dates are equal.                                                                                 |
-| RegExp                          | Source, intrinsic flags, and own properties including `lastIndex`.                                                      |
-| Typed arrays / Node Buffers     | Element kind, length and numeric elements; `NaN` values match and signed zeros match. Extra own properties also matter. |
-| ArrayBuffer / SharedArrayBuffer | Bytes and additional own properties. These are different kinds. Shared memory must remain stable during comparison.     |
-| DataView                        | Only bytes inside the view window, plus additional own properties. Different backing-buffer offsets can compare equal.  |
-
-Typed arrays compare **numeric values**; raw buffers and DataViews compare **bytes**. Consequently two float arrays containing different NaN bit patterns can be equal while their buffers are unequal. Buffer and Uint8Array share an element kind, but have different constructors: only loose mode can compare them across those constructors.
-
-Default/loose wrapper normalization is deliberately value-oriented: wrapper decorations, overridden `valueOf`, and wrapper `equals` methods are ignored. Strict mode compares wrapper payload and own properties and supports custom hooks. Normalization uses intrinsic brand-checked methods, not an arbitrary object's `valueOf`.
-
-```javascript
-const a = Object.assign(new Number(1), { note: 'first' });
-const b = Object.assign(new Number(1), { note: 'second' });
-
-isEqual(a, b); // true
-isLooseEqual(a, b); // true
-isStrictEqual(a, b); // false
-isEqual(new Float64Array([NaN]), new Float64Array([NaN])); // true
-isEqual(new Float64Array([-0]).buffer, new Float64Array([+0]).buffer); // false
-```
-
-```javascript
-const first = /item/gi;
-const second = /item/gi;
-
-isEqual(first, second); // true
-second.lastIndex = 2;
-isEqual(first, second); // false
-isEqual(new Date(NaN), new Date(NaN)); // true
-isEqual(new Set([1, 2]), new Set([2, 1])); // true
-```
-
-```javascript
-const first = new Uint8Array([9, 1, 2, 9]);
-const second = new Uint8Array([1, 2]);
-const window = new DataView(first.buffer, 1, 2);
-const whole = new DataView(second.buffer);
-
-isEqual(window, whole); // true
-isEqual(first.buffer, second.buffer); // false
-isEqual(new Float64Array([-0]), new Float64Array([+0])); // true
-```
+Circular references are supported; equality does not require the same pattern of shared references. See the [supported-type tables](docs/API.md#supported-types) for wrapper exceptions, binary views and the complete rules.
 
 ### Custom equality
 
-Two separate mechanisms are supported: caller-supplied customizers for a particular
-comparison, and object-owned `equals(other)` methods. The caller customizer has
-priority; `undefined` delegates to the existing comparison rules, including
-instance hooks where applicable. No rule is installed globally.
+Pass a comparison callback, called a **customiser**, when particular values need a special equality rule. Use `isEqual.custom()` to compare now, or `isEqual.create()` to save the callback and fallback mode in a reusable function. A callback returning `undefined` leaves the pair to the selected standard mode.
 
-#### Caller customizers
+For example, compare strings in a search filter without case, while keeping the stock flag significant:
 
-| Result      | Effect on the reached pair                            |
-| ----------- | ----------------------------------------------------- |
-| `true`      | Accept as equal without inspecting its children.      |
-| `false`     | Reject as unequal; no default fallback for this pair. |
-| `undefined` | Use the selected standard mode.                       |
-
-The callback receives original values before identity and wrapper normalization.
-It is also applied to reached own-property values (including symbols and
-non-enumerables), typed-array elements, and Map/Set candidate key/value pairs.
-Native collection membership cannot bypass it. The same one-to-one matcher and
-cyclic dependency invalidation remain in use.
-
-This is a value customizer, **not a traversal visitor**. Property names are matched
-exactly, not passed as candidate values. Fallback type, own-key-set, array-length,
-collection-size and typed-array-kind checks still apply. Internal payloads such as
-a Date timestamp or an ArrayBuffer byte sequence are compared by the relevant
-built-in handler, not passed to the callback as artificial nested values. Override
-the whole Date or buffer pair to change those rules. When identical object
-references fall back to identity equality, their children are not visited.
-
-Customizers must be synchronous, deterministic for a pair during a call, and must
-not mutate compared data. There is no invocation count/order guarantee; a pair may
-be examined multiple times or reused from per-call matching state. No property path
-or internal comparison context is exposed. The callback is called as an ordinary
-function without an explicit receiver. It is not called in reverse automatically:
-use a symmetric rule when symmetric equality is intended. Transitivity is not
-required by the collection matcher, but a custom relation may be unsuitable for
-applications that rely on mathematical equivalence.
-
-Only primitive booleans and `undefined` are valid results. Promises, thenables,
-boxed booleans, strings and other results throw `TypeError`; callbacks are never
-awaited. Errors thrown by a callback propagate unchanged. Invalid callback/options
-configuration is rejected before inspecting comparison inputs. Options must be an
-object, not `null`, an array, a primitive, or a function. Only the own key `mode`
-is accepted (unknown string/symbol keys throw); inherited configuration is ignored.
-Option getters and proxy traps can execute and throw. A callable class or revoked
-callable proxy can still fail when invoked; configuration validation is not a
-promise that arbitrary user code will succeed.
-
-#### Instance equality hooks
-
-An `equals(other)` method must return a primitive **boolean**. The actual method is invoked with its object as `this`; a shadowed `call` property on that function does not replace the hook or execute a property getter. For distinct non-normalized objects, either method returning `false` vetoes equality. When both methods return `true`, they override structural/constructor comparison. If only one method exists and accepts, the normal structural rules must still pass; an own `equals` property is still an own property. Identical references are accepted before hooks, and distinct functions remain identity-only.
-
+<!-- prettier-ignore -->
 ```javascript
-class Entity {
-  constructor(id, label) {
-    this.id = id;
-    this.label = label;
+import { isEqual } from 'go-equality';
+
+function ignoreCase(left, right) {
+  if (typeof left === 'string' && typeof right === 'string') {
+    return left.toLowerCase() === right.toLowerCase();
   }
 
-  equals(other) {
-    return other instanceof Entity && this.id === other.id;
-  }
+  return undefined;
 }
 
-isEqual(new Entity(1, 'old label'), new Entity(1, 'new label')); // true
-isEqual(new Entity(1, 'label'), new Entity(2, 'label')); // false
+const saved = { search: 'Laptop', inStockOnly: true };
+const current = { search: 'laptop', inStockOnly: true };
+const changed = { search: 'laptop', inStockOnly: false };
+const sameFilters = isEqual.create(ignoreCase);
+
+isEqual(saved, current);       // => false
+sameFilters(saved, current);   // => true
+sameFilters(saved, changed);   // => false
 ```
 
-Hooks should be pure and deterministic. A hook may compare a different pair recursively, but must not call the same equality operation indefinitely on the same pair. Hook call counts and evaluation order are not an API guarantee. The same applies to getters and proxy traps: short-circuiting may avoid invoking them, and errors from code that is invoked propagate.
+| Customiser result | Effect on the current pair                              |
+| ----------------- | ------------------------------------------------------- |
+| `true`            | Accept as equal; an object pair's children are skipped. |
+| `false`           | Reject as unequal; this does not request fallback.      |
+| `undefined`       | Use the selected standard mode.                         |
 
-```javascript
-const accepts = {
-  equals() {
-    return true;
-  }
-};
-const rejects = {
-  equals() {
-    return false;
-  }
-};
-const invalid = {
-  equals() {
-    return 'yes';
-  }
-};
+The customiser runs before standard checks and instance `equals()` hooks. It is synchronous, must keep inputs unchanged and must return a primitive boolean or `undefined`. It is not guaranteed to visit every nested value and receives no property path: this example applies to every string pair it receives. Use a dedicated comparator when rules differ by field.
 
-isEqual(accepts, rejects); // false
-isEqual(rejects, accepts); // false
-isEqual(rejects, rejects); // true
-isEqual(invalid, {}); // throws TypeError
-```
-
-### Circular references
-
-Circular objects, arrays, Maps, and Sets are supported without a recursive traversal stack. Comparison tracks **pairs**, not merely whether two individual objects have appeared before. Failed provisional matches are invalidated and their dependants are rechecked.
-
-```javascript
-const a = { value: 1 };
-const b = { value: 1 };
-a.self = a;
-b.self = b;
-
-const first = new Set();
-const second = new Set();
-first.add(first);
-second.add(second);
-
-isEqual(a, b); // true
-isEqual(first, second); // true
-```
-
-Equality is value-oriented and does not preserve reference-sharing topology. A shared child can equal two separate equivalent children. Likewise, equivalent cyclic unfoldings can compare equal without requiring the same number of graph nodes.
-
-```javascript
-const x = { v: 1 };
-const y = { v: 2 };
-
-isEqual([x, x], [{ v: 1 }, { v: 1 }]); // true
-isEqual([x, y, x], [x, y, y]); // false
-```
+See [custom equality](docs/API.md#custom-equality) for the walkthrough, validation, callback precedence and instance hooks.
 
 ### Errors and supported inputs
 
-An ordinary type/value mismatch returns `false`. There is no blanket catch that converts programming errors into inequality. Exceptions from getters, proxy traps, and custom hooks propagate. An invalid callback or instance-hook result throws `TypeError`. Detached or out-of-bounds binary views may throw the native error; identical references take the identity fast path after an optional caller customizer delegates.
+Value mismatches return `false`. Errors from getters, proxies and callbacks propagate; invalid callback or hook results throw `TypeError`. Compared graphs must be finite and remain unchanged during comparison, including shared backing memory. Proxy targets and their hidden values are not automatically unwrapped; equality of exposed properties does not prove equal target state. See [errors and supported inputs](docs/API.md#errors-and-supported-inputs) for the full contract.
 
-Promises, WeakMaps, WeakSets, Errors, URLs, and other unsupported opaque objects compare by identity, unless a caller customizer or bilateral instance hooks explicitly define equality. Private class fields cannot be inspected: classes whose equality depends on hidden state need an `equals` method or an explicit caller rule that can access the relevant state. Unknown or forged `Symbol.toStringTag` brands are treated conservatively; supported built-in brands are validated using intrinsic methods.
+## TypeScript
 
-Browser `document.all` is treated as an opaque object despite its unusual `typeof` result. The same reference is equal; it is not equal to `null` or `undefined`, even in loose mode, unless a caller customizer or bilateral instance hooks explicitly decide otherwise. A customizer that returns `undefined` delegates to those same rules.
+Declarations are included; no separate `@types` package is required. Declaration checks use TypeScript {{TYPESCRIPT_VERSION}}. The three root functions accept two `unknown` values and return `boolean`. `isEqual.create()` returns a reusable function with that signature. The five [exported TypeScript types](docs/API.md#typescript-types) describe comparators, customisers, modes, options and the callable `isEqual` interface. Equality functions do not narrow values as TypeScript type guards. See the import notes under [Usage](#usage) for supported entry points.
 
-The structural contract assumes stable finite inputs, pure hooks, and standard built-in prototype chains (subclasses are allowed). Replacing a native built-in's prototype with an unrelated or null prototype is outside that contract and can hide its brand; results are not guaranteed for such prototype-reassigned values. Null-prototype **ordinary dictionaries** are supported. Do not mutate compared graphs, or shared backing memory, while comparison is running. These functions are not a security boundary for hostile proxies or arbitrary executable getters.
+Customisers are called without a receiver. Bind a callback that declares a required `this` object, or wrap the call in an arrow function; see [caller customisers](docs/API.md#caller-customisers).
 
-Internal traversal is iterative rather than recursively depth-limited, but memory and computation remain finite resources. Large ambiguous unordered collections can require many candidate comparisons and matching repairs. There is no universal linear-time promise, no enforced resource budget, and no protection against non-terminating user hooks.
+## Performance
+
+Standard comparisons can skip work using primitive equality, identical references and native collection membership. Custom comparisons run your callback before those shortcuts, which can cost more, especially for large Sets and Maps. A factory saves repeated configuration checks; it still performs deep comparison and calls your callback.
+
+The engine does not mutate inputs or cache equality results between calls. Ambiguous unordered collections can require repeated comparisons and substantial memory, including storage that grows with the square of the collection size. Iterative traversal avoids recursion limits but does not impose a fixed time or memory budget.
+
+See the [benchmark and memory guide](https://github.com/koyote130708/go-equality/blob/master/docs/development.md#benchmarks-and-memory) for measurement commands, methodology and limits. Local benchmark timings are observations, not universal speed guarantees.
+
+## Migration
+
+Version 2 fixes comparisons involving cycles, unordered collections, custom instances and hooks, own non-enumerable and symbol properties, and browser builds. It also defines the rules for sparse arrays, `RegExp` `lastIndex`, wrappers, hook return values, unsupported types, constructors, and objects from different JavaScript environments. Loose mode no longer converts arbitrary objects to primitives. Only the documented root API, its attached methods, and listed distribution entry points are public; internal helpers have changed. CommonJS usage supports Node.js 8.0.0 or later; see [runtime support](#runtime-support) for ES module and optional-native requirements. The standalone `isLooseEqual` and `isStrictEqual` exports remain supported alongside the attached aliases and custom methods. Review the [comparison rules](docs/API.md#comparison-rules) and [changelog](CHANGELOG.md) before upgrading.
 
 ## Development
 
-The unit suite uses Node's native test runner and needs no installed test framework:
-
-```sh
-npm test
-npm run coverage
-```
-
-Contributing requires Node 22.18+ within Node 22, or Node 24+ (the lint toolchain does not support Node 23). The published library retains its Node {{NODE_MIN_VERSION}} runtime minimum. Install the locked development tools for linting, formatting, bundling, minification and declaration checks:
+Contributing requires Node.js 22.18+ within Node 22, or Node.js 24+; the lint toolchain does not support Node 23. This requirement is separate from [consumer runtime support](#runtime-support).
 
 ```sh
 npm ci
 npm run docs
 npm run build
-npm run lint
-npm run format:check
-npm run verify
+npm test
 ```
 
-`verify` first runs ESLint with zero warnings and checks formatting, then rebuilds both bundles, checks documentation freshness, runs the source suite with coverage and the strict TypeScript consumer fixture, reruns the public suite through each bundle's CommonJS/global/AMD branches, and tests an installed packed package including named ESM imports, CommonJS/ESM declaration consumers and both browser bundles through their exported paths and loaders. It also checks build-failure recovery and bundle loader environments, and runs the constrained-old-space regression. The single `npm run build` command runs internal bundling and minification stages sequentially in a temporary directory, validates both bundles, then replaces `dist` as a complete set. A failed replacement restores the previous distribution; if restoration also fails, the error identifies the retained backup. Successful builds remove stale output. Terser compresses JavaScript and shortens local identifiers, producing one line of code after the licence banner. Public property names and function names are preserved. Comparison and typeof rewrites that could change browser document.all behavior are disabled, and property access is not assumed to be free of getter/proxy side effects. Both generated bundles are syntax-checked and exercised through the same behavioral suite. `npm run test:build` exercises build failures and output replacement in isolated temporary copies. Bundling and minification are internal functions; partial-build commands are not exposed.
+Edit `scripts/README.template.md` for this overview and `scripts/API.template.md` for the full API documentation. `npm run docs` generates `README.md` and `docs/API.md`, reuses the API summary and validates the public API inventory and navigation. The build assembles the complete consumer package under `package/`, including browser bundles in `package/dist/`.
 
-Use `npm run lint:fix` and `npm run format` for reviewed fixes. Formatting uses single JS/TS quotes, double JSX quotes, semicolons, two spaces and no optional trailing commas. Edit maintained sources; generated bundles and this README are checked through their own build/documentation gates. The source checkout's `docs/code-quality.md` records the shared configuration artifact and scoped exceptions. CI runs the same `verify` command on Node 22 and 24; repository administrators must make the Verify checks required in branch protection.
-
-`npm run docs` regenerates this README from `scripts/README.template.md`, package metadata and the public API. Edit the template for prose and examples; the generator maintains the current version, runtime/compiler versions, public-call count and table of contents. Historical release descriptions remain authored text. Documentation tests execute the examples and reject stale generated output, missing API entries and broken links. `npm run test:docs` checks freshness without modifying files. CI regenerates the README and checks for drift.
-
-Real-browser regressions are separate from Node VM loader checks. Install the optional browser-test tooling once (Python 3.10 or later), then run:
+Run the standard gate with an exact Node.js 8.0.0 consumer executable, while keeping the command itself on a supported contributor Node version:
 
 ```sh
-python -m pip install -r test/browser/requirements.txt
-python -m playwright install chromium
-npm run test:browser
-npm run verify:all
+npm run verify -- --node /path/to/node-8.0.0
 ```
 
-`npm pack` reuses `verify`; `npm publish` also runs `verify:all`. `verify:all` includes `verify` plus the real Chromium checks. A system Chrome/Chromium executable can be selected with `CHROMIUM_PATH`; an installed system Chromium is also detected when the Playwright-managed executable is absent. Missing tooling/browsers fail rather than silently skip. The browser harness blocks external requests and loads the actual readable and compact bundles into separate browser contexts. Browser cases cover `document.all`, both operand orders, nested/cyclic values, collection keys/values, hook dispatch, custom override/fallback and factory reuse.
+`verify` checks lint, formatting, generated documentation, source coverage, declarations, bundles and an installed package. `verify:all` adds Chromium, Firefox and WebKit checks of the same archive. See the [development guide](https://github.com/koyote130708/go-equality/blob/master/docs/development.md) for browser setup, exact-runtime selection, build recovery, release verification and local package installation. [Code quality](https://github.com/koyote130708/go-equality/blob/master/docs/code-quality.md) explains the shared tooling and formatting rules.
 
-CI runs a separate Chromium/Firefox/WebKit matrix. To run it locally, install all three engines with `python -m playwright install chromium firefox webkit`, then run `npm run test:browser -- --browser all`. Configuring a CI job is not evidence that every engine was tested; executed versions are recorded in the release report.
+The coverage badge reports executable source-line coverage. The docs badge reports checked public API reference coverage. Neither percentage measures how understandable the writing is or guarantees correctness for every input; see the [test coverage map](https://github.com/koyote130708/go-equality/blob/master/docs/test-coverage.md).
 
-`npm run benchmark` produces warmed local timings with no brittle timing assertions. It covers primitive/identity calls, application objects, arrays, deep and cyclic graphs, native and structural collections, and binary data. For paired before/after measurements, point the benchmark at an extracted previous package:
+## Further reading
 
-```sh
-node --expose-gc scripts/benchmark.js --baseline ../go-equality-baseline --output comparison.json
-node scripts/benchmark-memory.js --baseline ../go-equality-baseline --output memory.json
-npm run test:memory
-npm run test:loaders
-npm run benchmark:custom
-npm run test:stress
-node scripts/stress.js --seeds 15000 --baseline ../go-equality-baseline
-node scripts/audit-matching.js default matching-default.json
-node scripts/audit-matching.js strict matching-strict.json
-node scripts/audit-matching.js loose matching-loose.json
-```
+- [Full API documentation](docs/API.md): signatures, parameters, examples and behavioural contracts.
+- [Changelog](CHANGELOG.md): release changes and migration from version 1.
+- [Development guide](https://github.com/koyote130708/go-equality/blob/master/docs/development.md): contributor setup, verification, release and benchmark procedures.
+- [Engine design](https://github.com/koyote130708/go-equality/blob/master/docs/design.md): comparison internals and optimisation constraints.
+- [Test coverage map](https://github.com/koyote130708/go-equality/blob/master/docs/test-coverage.md): contracts, regression suites and known limits.
 
-Input fixtures and assertions are outside the timed loops. Both versions warm up; sample order alternates between baseline-first and optimized-first. Results record individual samples, Node/V8/CPU details, and optional explicit garbage collection between samples. Measurements are local observations, not universal speed guarantees. A baseline directory must contain the extracted package root and support the comparison contract exercised by the selected workloads.
+The npm package contains runtime source, TypeScript declarations, both browser bundles, package metadata, `README.md`, `docs/API.md`, the licence and the changelog. Contributor guides, tests, benchmarks, scripts and CI configuration stay in the [source repository](https://github.com/koyote130708/go-equality).
 
-`npm run test:stress` independently checks generated stable cyclic graphs; the optional `--baseline` flag compares against a supplied prior package instead. Benchmarks and stress tooling ship in the source ZIP, not the runtime npm package.
+## Licence
 
-Optimisations include proven native-key collection paths, cheaper per-call pair bookkeeping, local candidate rejection before matching, reusable matching scratch space, aligned byte blocks, and fewer redundant property/type operations. No inputs are mutated and no equality results are cached across calls. Complex structural/loose/custom collection matching still has a superlinear worst case; the general matcher remains necessary.
-
-The matcher releases settled leaf candidate bookkeeping and compacts dense rejected-column caches without discarding unresolved cyclic dependencies. Its primary benefit is lower memory retention on large leaf-structured collections, not universally faster comparisons. Ambiguous nested/custom collections can still retain many provisional pairs; rejected-column bitsets themselves remain quadratic in bits in the worst case.
-
-`npm run benchmark:memory` measures fresh-process peak RSS and post-call heap deltas. Neither metric is isolated peak comparator heap, and these cold calls are not warmed speed measurements. `npm run test:memory` checks correctness in a child process with a 64 MiB V8 old-space limit and 4 MiB semi-space limit; this is not a whole-process memory limit or a public comparison budget. `npm run test:types` checks the declaration fixture with pinned TypeScript {{TYPESCRIPT_VERSION}}, including `--strict` and `--exactOptionalPropertyTypes`; it is included in both local `verify` and CI.
-
-The test suite combines public API tests, focused regressions, all 512 three-by-three matching matrices, generated cyclic graphs checked against a separate eager fixed-point oracle, and acyclic differential checks in the subset shared with Node's deep comparator.
-
-Testing covers defined behavioural partitions; no finite test suite proves correctness for every possible JavaScript program or user-provided getter/hook.
-
-### Custom comparison cost
-
-Version 2.0.0 includes grouped modes and the caller-customizer API alongside the
-three root exports. The standalone
-`isLooseEqual` and `isStrictEqual` exports remain supported and are not deprecated.
-Use `.custom(...)` for an immediate boolean or `.create(...)` for a reusable function.
-
-Ordinary calls retain their native membership and primitive/identity fast paths.
-Custom calls must run the callback before applicable shortcuts; especially for
-large Sets and Maps, they can be materially more expensive. The factory avoids
-repeated configuration validation, not the cost of deep comparison or callbacks.
-There is no promise that custom comparison is as fast as standard comparison.
-`npm run benchmark:custom` compares ordinary, immediate-custom, and pre-created
-calls on the same data with a delegating callback. It reports local measurements,
-not a timing assertion or a promise that a factory is always faster.
-
-### Updating from 1.x
-
-Version 2 fixes observable behaviour in cyclic comparisons, unordered collections, custom instances/hooks, own non-enumerable/symbol properties, and browser builds. It also defines sparse arrays, RegExp `lastIndex`, wrapper normalization, strict hook return types, opaque objects, and cross-realm/constructor rules. Arbitrary object-to-primitive coercion in loose mode is no longer supported. Only the documented root API, its attached methods, and listed distribution entry points are public; obsolete internal helpers were replaced. The corrected Node support declaration is a breaking metadata change. Review the comparison tables and `CHANGELOG.md` before upgrading.
-
-## Additional documentation
-
-- [Changelog](CHANGELOG.md): changes in 2.0.0 and migration from version 1.
-- [Source repository](https://github.com/koyote130708/go-equality): see `docs/design.md` for comparison-engine internals and `docs/test-coverage.md` for the test coverage map.
-
-The npm package contains runtime source, TypeScript declarations, both browser bundles, package metadata, this README, the licence, and the changelog. Development documents, tests, benchmarks, scripts, and CI configuration stay in the source repository. README examples and packaged relative links are checked during release verification.
-
-## License
-
-[GNU LGPLv3 (LGPL-3.0-only)](LICENSE.md) Copyright (c) Michael Ko.
+[{{LICENSE}}](LICENSE.md) Copyright (c) Michael Ko.

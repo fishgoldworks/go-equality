@@ -7,57 +7,110 @@ const root = path.resolve(__dirname, '..');
 const metadata = require('../package.json');
 const api = require('../index.js');
 const render = (...args) => require('../scripts/docs')(...args);
-const template = () => fs.readFileSync(path.join(root, 'scripts/README.template.md'), 'utf8');
-
-test('README matches its documentation sources', () => {
-  const expected = render(template(), metadata, api);
-  assert.equal(
-    fs.readFileSync(path.join(root, 'README.md'), 'utf8').replace(/\r\n/g, '\n'),
-    expected,
-    'Run npm run docs after editing the template, API or package metadata.'
+const templates = () =>
+  Object.fromEntries(
+    ['README', 'API'].map((name) => [name, fs.readFileSync(path.join(root, 'scripts', name + '.template.md'), 'utf8')])
   );
+
+test('both documents match their maintained sources', () => {
+  for (const [file, expected] of Object.entries(render(templates(), metadata, api))) {
+    assert.equal(
+      fs.readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n'),
+      expected,
+      'Run npm run docs after editing documentation sources.'
+    );
+  }
 });
 
-test('documentation generation updates current metadata and preserves release history', () => {
+test('generation updates both documents and preserves release history', () => {
   const updated = {
     ...metadata,
     version: '9.8.7',
     engines: { node: '>=24.0.0' },
     devDependencies: { ...metadata.devDependencies, typescript: '9.0.0' }
   };
-  const result = render(template(), updated, api);
-  assert.match(result, /[-*+]\s+\*\*version\*\*:\s+9\.8\.7/);
-  assert.match(result, /Node\.js \*\*24\.0\.0 or later\*\*/);
-  assert.match(result, /pinned TypeScript 9\.0\.0/);
-  assert.match(result, /All \*\*7 public call forms\*\*/);
-  assert.match(result, /docs-7%20call%20forms-blue/);
-  assert.match(result, /Version 2\.0\.0 includes grouped modes/);
+  const result = render(templates(), updated, api);
+  const readme = result['README.md'];
+  assert.match(readme, /[-*+]\s+\*\*Version:\*\* \[9\.8\.7\]\(CHANGELOG\.md\)/);
+  assert.match(result['docs/API.md'], /Version \[9\.8\.7\]\(\.\.\/CHANGELOG\.md\)/);
+  assert.match(readme, /CommonJS\s+\|\s+Node\.js 24\.0\.0 or later/);
+  assert.match(readme, /Declaration checks use TypeScript 9\.0\.0/);
+  assert.match(readme, /docs-100%25-brightgreen/);
+  assert.match(readme, /Version 2 fixes comparisons involving cycles/);
 });
 
-test('documentation generation rejects missing, duplicate and undocumented call forms', () => {
-  assert.throws(
-    () => render(template().replace('#### isEqual.custom', '#### missing'), metadata, api),
-    /public call forms/
+test('one API summary source produces links appropriate to each document', () => {
+  const sources = templates();
+  sources.API = sources.API.replace(
+    'Determines whether two values are deeply equal. Primitive wrappers are compared as their wrapped values.',
+    'Updated summary description.'
   );
-  assert.throws(
-    () => render(template().replace('#### isEqual.custom', '#### isEqual.strict'), metadata, api),
-    /public call forms/
-  );
-  assert.throws(() => render(template(), metadata, { ...api, isNewFunction() {} }), /public call forms/);
+  const result = render(sources, metadata, api);
+  for (const text of Object.values(result)) {
+    assert.match(text, /Updated summary description\./);
+  }
+  assert.match(result['README.md'], /\[`isEqual\(value, other\)`\]\(docs\/API\.md#isequalvalue-other\)/);
+  assert.match(result['docs/API.md'], /\[`isEqual\(value, other\)`\]\(#isequalvalue-other\)/);
+  assert.doesNotMatch(result['README.md'], /^#### isEqual/m);
+  const contents = result['README.md'].split('## Contents\n')[1].split('## Installation\n')[0];
+  assert.match(contents, /- \[API summary\]\(#api-summary\)/);
+  for (const [, target] of contents.matchAll(/\]\(([^)]+)\)/g)) {
+    assert.ok(target.startsWith('#'), 'Contents must link within the current document: ' + target);
+  }
+  const introduction = result['README.md'].split('## Contents\n')[0];
+  const summary = result['README.md'].split('## API summary\n')[1].split('\n## ')[0];
+  assert.match(introduction, /\*\*\[View full API documentation\]\(docs\/API\.md\)\*\*/);
+  assert.match(summary, /\*\*\[full API documentation\]\(docs\/API\.md\)\*\*/);
+  assert.doesNotMatch(result['docs/API.md'], /\]\(docs\/API\.md\)/);
 });
 
-test('generated contents use duplicate anchors and ignore fenced headings', () => {
+test('generation rejects missing, duplicate and undocumented API entries', () => {
+  for (const replacement of ['### `missing', '### `isEqual.strict']) {
+    const sources = templates();
+    sources.API = sources.API.replace('### `isEqual.custom', replacement);
+    assert.throws(() => render(sources, metadata, api), /public call forms/);
+  }
+  assert.throws(() => render(templates(), metadata, { ...api, isNewFunction() {} }), /public call forms/);
+});
+
+test('generation rejects incomplete summaries and missing or duplicated summary fields', () => {
+  const sources = templates();
+  sources.API = sources.API.replace(/^\| \[`isEqual\.custom[^\n]+\n/m, '');
+  assert.throws(() => render(sources, metadata, api), /summary must cover all public call forms/);
+  for (const replacement of ['', '{{API_SUMMARY}}\n{{API_SUMMARY}}']) {
+    const sources = templates();
+    sources.README = sources.README.replace('{{API_SUMMARY}}', replacement);
+    assert.throws(() => render(sources, metadata, api), /exactly one API summary field/);
+  }
+});
+
+test('both contents use duplicate anchors and ignore fenced headings', () => {
   const extra =
-    '```text\n### Invisible heading\n```\n\n~~~text\n### Another invisible heading\n~~~\n\n### Repeated heading\n\n### Repeated heading\n\n';
-  const result = render(template().replace('## License', extra + '## License'), metadata, api);
-  assert.match(result, /\[Parameters\]\(#parameters-6\)/);
-  assert.match(result, /\[Examples\]\(#examples-6\)/);
-  assert.match(result, /\[Repeated heading\]\(#repeated-heading\)/);
-  assert.match(result, /\[Repeated heading\]\(#repeated-heading-1\)/);
-  assert.doesNotMatch(result, /\[Invisible heading\]|\[Another invisible heading\]/);
-  assert.ok(result.includes(extra), 'Source prose and fenced examples must be preserved.');
+    '```text\n### Invisible heading\n```\n\n~~~text\n### Another invisible heading\n~~~\n\n## Repeated heading\n\n## Repeated heading\n\n';
+  const sources = templates();
+  for (const name of Object.keys(sources)) {
+    sources[name] += '\n' + extra;
+  }
+  for (const result of Object.values(render(sources, metadata, api))) {
+    assert.match(result, /\[API summary\]\(#api-summary\)/);
+    assert.doesNotMatch(result, /\[Parameters\]|\[Examples\]|\[isEqual\(/);
+    assert.match(result, /\[Repeated heading\]\(#repeated-heading\)/);
+    assert.match(result, /\[Repeated heading\]\(#repeated-heading-1\)/);
+    assert.doesNotMatch(result, /\[Invisible heading\]|\[Another invisible heading\]/);
+    assert.ok(result.includes(extra), 'Source prose and fenced examples must be preserved.');
+  }
 });
 
-test('documentation generation rejects unresolved template fields', () => {
-  assert.throws(() => render(template() + '\n{{UNKNOWN_FIELD}}\n', metadata, api), /Unknown template field/);
+test('generation rejects unresolved fields in either source', () => {
+  for (const name of ['README', 'API']) {
+    const sources = templates();
+    sources[name] += '\n{{UNKNOWN_FIELD}}\n';
+    assert.throws(() => render(sources, metadata, api), /Unknown template field/);
+  }
+});
+
+test('generation requires signatures in API headings', () => {
+  const sources = templates();
+  sources.API = sources.API.replace('### `isEqual(value, other)`', '### `isEqual`');
+  assert.throws(() => render(sources, metadata, api), /headings must include a signature/);
 });

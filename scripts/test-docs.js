@@ -30,17 +30,25 @@ function snapshot(root) {
   );
 }
 
-test('documentation check rejects stale output without changing files', (t) => {
-  const root = fixture(t);
-  fs.appendFileSync(path.join(root, 'README.md'), '\nStale generated content.\n');
-  const before = snapshot(root);
-  const result = run(root, '--check');
-  assert.notEqual(result.status, 0, result.stdout + result.stderr);
-  assert.match(result.stderr, /README\.md|stale/i);
-  assert.deepEqual(snapshot(root), before);
-  assert.equal(run(root).status, 0);
-  assert.equal(run(root, '--check').status, 0);
-});
+for (const file of ['README.md', 'docs/API.md']) {
+  for (const state of ['stale', 'missing']) {
+    test('documentation check rejects ' + state + ' ' + file + ' without changing files', (t) => {
+      const root = fixture(t);
+      if (state === 'missing') {
+        fs.unlinkSync(path.join(root, file));
+      } else {
+        fs.appendFileSync(path.join(root, file), '\nStale generated content.\n');
+      }
+      const before = snapshot(root);
+      const result = run(root, '--check');
+      assert.notEqual(result.status, 0, result.stdout + result.stderr);
+      assert.ok(result.stderr.includes('Stale ' + file), result.stderr);
+      assert.deepEqual(snapshot(root), before);
+      assert.equal(run(root).status, 0);
+      assert.equal(run(root, '--check').status, 0);
+    });
+  }
+}
 
 test('documentation CLI rejects unknown options without changing files', (t) => {
   const root = fixture(t);

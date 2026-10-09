@@ -51,6 +51,24 @@ globalThis.runGoEqualityBrowserTests = function runGoEqualityBrowserTests(api) {
     ]
   ];
   for (const [name, compare] of routes) {
+    const record = { first: 1, second: 2 };
+    const omitted = new Proxy(
+      { first: 1, second: 2, third: 2 },
+      {
+        ownKeys() {
+          return ['first', 'third'];
+        }
+      }
+    );
+    const virtual = new Proxy(Object.create(record), {
+      ownKeys() {
+        return ['second', 'first'];
+      }
+    });
+    check(name + ': proxy omitted key', false, () => compare(record, omitted));
+    check(name + ': reversed proxy omitted key', false, () => compare(omitted, record));
+    check(name + ': reordered virtual keys', true, () => compare(record, virtual));
+    check(name + ': reversed virtual keys', true, () => compare(virtual, record));
     check(name + ': equal record control', true, () => compare({ a: [1, 2] }, { a: [1, 2] }));
     check(name + ': cyclic Set control', true, () => {
       const a = new Set(),
@@ -94,6 +112,31 @@ globalThis.runGoEqualityBrowserTests = function runGoEqualityBrowserTests(api) {
       compare({ id: 1, equals: byId }, { id: 1, equals: byId })
     );
   }
+  // HTMLDDA participates in the same instance-hook protocol as other objects.
+  const previousHook = Object.getOwnPropertyDescriptor(all, 'equals');
+  try {
+    Object.defineProperty(all, 'equals', { configurable: true, value: () => true });
+    const other = { equals: () => true };
+    const reject = { equals: () => false };
+    for (const [name, compare] of routes) {
+      check(name + ': HTMLDDA accepts bilateral hooks', true, () => compare(all, other));
+      check(name + ': bilateral HTMLDDA hooks work in reverse', true, () => compare(other, all));
+      check(name + ': nested HTMLDDA accepts bilateral hooks', true, () => compare([all], [other]));
+      check(name + ': nested HTMLDDA hooks work in reverse', true, () => compare([other], [all]));
+      check(name + ': another object can veto an HTMLDDA hook', false, () => compare(all, reject));
+      check(name + ': HTMLDDA hook veto works in reverse', false, () => compare(reject, all));
+      for (const value of [null, undefined]) {
+        check(name + ': HTMLDDA hook cannot accept ' + value, false, () => compare(all, value));
+        check(name + ': ' + value + ' cannot use an HTMLDDA hook', false, () => compare(value, all));
+      }
+    }
+  } finally {
+    if (previousHook) {
+      Object.defineProperty(all, 'equals', previousHook);
+    } else {
+      delete all.equals;
+    }
+  }
   const containers = [
     (value) => value,
     (value) => ({ value }),
@@ -128,6 +171,53 @@ globalThis.runGoEqualityBrowserTests = function runGoEqualityBrowserTests(api) {
       b.item = all;
       return rejected && compare(a, b) === true;
     });
+  }
+  // No native Buffer exists in this browser. A user class with the same shape
+  // must retain its own equality contract, including exceptions.
+  for (const [name, compare] of routes) {
+    for (const behaviour of ['accept', 'veto', 'throw', 'invalid']) {
+      const sentinel = new Error('application Buffer-shaped hook');
+      const ApplicationBuffer = class Buffer extends Uint8Array {
+        static isBuffer() {
+          throw new Error('must not execute application metadata');
+        }
+        static from() {
+          throw new Error('must not execute application metadata');
+        }
+        static alloc() {
+          throw new Error('must not execute application metadata');
+        }
+        equals() {
+          if (behaviour === 'accept') {
+            return true;
+          }
+          if (behaviour === 'veto') {
+            return false;
+          }
+          if (behaviour === 'throw') {
+            throw sentinel;
+          }
+          return 'invalid';
+        }
+      };
+      const a = new ApplicationBuffer([1]);
+      const b = new ApplicationBuffer([behaviour === 'accept' ? 2 : 1]);
+      for (const [direction, left, right] of [
+        ['forward', a, b],
+        ['reverse', b, a]
+      ]) {
+        check(name + ': application Buffer shape / ' + behaviour + ' / ' + direction, true, () => {
+          try {
+            const result = compare(left, right);
+            return (behaviour === 'accept' && result === true) || (behaviour === 'veto' && result === false);
+          } catch (error) {
+            return (
+              (behaviour === 'throw' && error === sentinel) || (behaviour === 'invalid' && error instanceof TypeError)
+            );
+          }
+        });
+      }
+    }
   }
   const ignoreCase = (a, b) =>
     typeof a === 'string' && typeof b === 'string' ? a.toLowerCase() === b.toLowerCase() : undefined;

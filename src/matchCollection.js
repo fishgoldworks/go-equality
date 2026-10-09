@@ -1,7 +1,7 @@
 'use strict';
 
-// Lazy bipartite matching. Native hits are preferred, not reserved: loose or
-// custom equality may need an augmenting path to reassign an earlier match.
+// Find one-to-one matches as needed. Try native matches first, but allow
+// augmenting paths to reassign them when loose or custom equality requires it.
 class CollectionMatcher {
   constructor(node, context, left, right, isMap) {
     this.node = node;
@@ -52,8 +52,8 @@ class CollectionMatcher {
         row.set(j, ref);
       }
     }
-    // Settled leaves and failures use booleans, with no reference-array or
-    // watcher allocation. Only genuinely provisional key/value pairs need two.
+    // Completed leaf comparisons and failures use booleans. A Map entry needs
+    // two dependency references only while both its key and value are unresolved.
     if (typeof ref === 'boolean') {
       return ref;
     }
@@ -72,9 +72,9 @@ class CollectionMatcher {
     if (++this.rejectionCounts[i] !== 64) {
       return;
     }
-    // Sparse/identity rows remain Maps. After many settled failures, retain one
-    // bit per rejected column rather than a Map entry per failed candidate.
-    // Positive and provisional edges MUST remain references, not optimistic bits.
+    // After many failures in a row, store one bit per rejected candidate to
+    // save space. Successful and unresolved candidates stay in the Map;
+    // unresolved candidates need their dependency references.
     if (!this.rejected) {
       this.rejected = new Array(this.size);
     }
@@ -95,9 +95,9 @@ class CollectionMatcher {
     this.leftMatch[i] = j;
     this.rightMatch[j] = i;
     const ref = this.edges[i].get(j);
-    // Recheck a collection when a CHOSEN edge is disproved, not every rejected
-    // candidate. Old watchers may remain safely: removing one would need ref
-    // counts when several chosen edges share the same pair.
+    // Recheck the collection if a selected match later fails. Old watchers can
+    // safely remain: removing one would require reference counts when several
+    // selected matches depend on the same pair.
     if (Array.isArray(ref)) {
       this.context.watch(this.node, ref[0]);
       this.context.watch(this.node, ref[1]);

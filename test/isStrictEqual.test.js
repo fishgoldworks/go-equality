@@ -1,8 +1,8 @@
 /*
  * Copyright (c) 2022 Michael Ko
  *
- * This work is licensed under the GNU LGPLv3 license.
- * <https://www.gnu.org/licenses/lgpl-3.0.en.html>.
+ * SPDX-License-Identifier: MIT
+ * See LICENSE.md for the full licence text.
  */
 
 'use strict';

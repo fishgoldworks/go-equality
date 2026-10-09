@@ -1,10 +1,11 @@
 {
   "name": "go-equality",
-  "description": "Equality checking functions that work for both primitive types and objects, including nested objects and cyclic objects with a circular reference.",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Deep equality with strict and loose modes, circular-reference support, and custom comparison rules.",
+  "license": "MIT",
   "author": "Michael Ko",
   "email": "koyote130708@gmail.com",
-  "version": "2.0.0",
-  "license": "LGPL-3.0-only",
   "keywords": [
     "equal",
     "deep equal",
@@ -24,64 +25,51 @@
     "type": "git",
     "url": "https://github.com/koyote130708/go-equality.git"
   },
+  "engines": {
+    "node": ">=8.0.0"
+  },
   "main": "index.js",
   "scripts": {
     "build": "node scripts/build.js",
     "docs": "node scripts/docs.js",
+    "pack:package": "node scripts/pack-package.js",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix --max-warnings 0",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
     "test": "node scripts/test.js",
     "test:docs": "node scripts/docs.js --check && node --test scripts/test-docs.js",
-    "test:types": "tsc --project test/types/tsconfig.json",
+    "test:types": "node scripts/test-types.js",
     "test:build": "node --test scripts/test-build.js",
+    "test:tooling": "node --test scripts/test-tooling.js",
     "test:artifacts": "node scripts/test-artifacts.js",
     "test:loaders": "node scripts/test-loaders.js",
     "test:package": "node scripts/test-package.js",
+    "test:release": "node --test scripts/test-release.js",
+    "test:browser": "python scripts/test-browser.py",
     "test:memory": "node scripts/test-memory.js",
     "test:stress": "node scripts/stress.js",
-    "test:browser": "python scripts/test-browser.py",
-    "coverage": "npm test -- --experimental-test-coverage --test-coverage-include=\"src/**\"",
-    "verify": "npm run lint && npm run format:check && npm run build && npm run test:docs && npm run coverage && npm run test:types && npm run test:build && npm run test:artifacts && npm run test:package && npm run test:memory",
-    "verify:all": "npm run verify && npm run test:browser",
+    "coverage": "npm test -- --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100",
+    "verify": "node scripts/verify.js",
+    "verify:all": "node scripts/verify.js --browser",
     "benchmark": "node scripts/benchmark.js",
     "benchmark:custom": "node scripts/benchmark-custom.js",
     "benchmark:memory": "node scripts/benchmark-memory.js",
-    "prepack": "npm run verify",
-    "prepublishOnly": "npm run verify:all",
-    "lint": "eslint . --max-warnings=0",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "prepack": "node scripts/root-package-guard.js",
+    "prepublishOnly": "node scripts/root-package-guard.js"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "acorn": "8.15.0",
+    "eslint": "10.11.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-import-resolver-typescript": "4.4.5",
+    "eslint-plugin-import-x": "4.17.1",
+    "eslint-plugin-no-only-tests": "3.4.0",
+    "globals": "17.12.0",
+    "prettier": "3.9.6",
     "terser": "5.51.2",
     "typescript": "5.8.3",
-    "@fishgold/eslint-config": "file:vendor/fishgold-eslint-config-0.2.0.tgz",
-    "eslint": "10.11.0",
-    "prettier": "3.9.6",
     "typescript-eslint": "8.70.1"
-  },
-  "engines": {
-    "node": ">=22.16.0"
-  },
-  "types": "index.d.ts",
-  "sideEffects": false,
-  "files": [
-    "index.js",
-    "index.d.ts",
-    "src/*.js",
-    "dist/go-equality.js",
-    "dist/go-equality.min.js",
-    "README.md",
-    "LICENSE.md",
-    "CHANGELOG.md"
-  ],
-  "exports": {
-    ".": {
-      "types": "./index.d.ts",
-      "default": "./index.js"
-    },
-    "./dist/go-equality.js": "./dist/go-equality.js",
-    "./dist/go-equality.min.js": "./dist/go-equality.min.js",
-    "./package.json": "./package.json"
   }
 }

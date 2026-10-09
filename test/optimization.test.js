@@ -290,7 +290,8 @@ for (const [name, compare] of Object.entries(api)) {
       d = new Value('d'),
       bridge = new Value('bridge');
     // While searching the second row, a value comparison disproves a key's
-    // provisional child pair BEFORE that key gets assigned on an augmenting path.
+    // tentative child match before that key is assigned. A later watcher
+    // must still detect the failure.
     const a = new Map([
       [{ child: d }, bridge],
       [{ child: c }, c]

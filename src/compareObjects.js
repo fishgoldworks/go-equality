@@ -1,6 +1,7 @@
 'use strict';
 
 const compareProperties = require('./compareProperties');
+const isBufferEquals = require('./isBufferEquals');
 const compareCollections = require('./compareCollections');
 const { typedLength, typedValues, dataLength, dataOffset, dataBuffer } = require('./typeInfo');
 
@@ -52,8 +53,8 @@ module.exports = function compareObjects(node, context, custom = false) {
   const b = node.right;
   const leftHook = a.equals;
   const rightHook = b.equals;
-  const hasLeftHook = typeof leftHook === 'function';
-  const hasRightHook = typeof rightHook === 'function';
+  const hasLeftHook = typeof leftHook === 'function' && !isBufferEquals(a, leftHook);
+  const hasRightHook = typeof rightHook === 'function' && !isBufferEquals(b, rightHook);
   if (hasLeftHook && !hook(a, leftHook, b)) {
     return false;
   }
@@ -95,7 +96,13 @@ module.exports = function compareObjects(node, context, custom = false) {
         }
         break;
       case 'RegExp':
-        if (ai.source !== bi.source || ai.flags !== bi.flags) {
+        if (ai.source !== bi.source) {
+          return false;
+        }
+        if (ai.flags === null) {
+          throw new Error('RegExp comparison requires native flag getters that are unavailable.');
+        }
+        if (ai.flags !== bi.flags) {
           return false;
         }
         break;
@@ -133,7 +140,7 @@ module.exports = function compareObjects(node, context, custom = false) {
         if (ai.name !== bi.name) {
           return false;
         }
-        // Intrinsic iterator creation validates detached/out-of-bounds views.
+        // The native iterator method throws for detached or out-of-bounds views.
         typedValues.call(a);
         typedValues.call(b);
         length = typedLength.call(a);
@@ -141,7 +148,7 @@ module.exports = function compareObjects(node, context, custom = false) {
           return false;
         }
         if (custom) {
-          // Elements are exposed values; internal byte/Date payloads are not.
+          // Pass numeric elements to the customiser; bytes and Date timestamps stay internal.
           for (let i = 0; i < length; i++) {
             if (!context.require(node, context.pair(a[i], b[i]))) {
               return false;

@@ -2,7 +2,54 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
-const { isEqual } = require(process.env.EQUALITY_ENTRY || path.join(__dirname, '..'));
+const benchmarkOutput = require('./benchmark-output');
+const resolveLibrary = require('./resolve-library');
+const request = process.env.EQUALITY_ENTRY || path.join(__dirname, '..');
+const library = resolveLibrary(require.resolve(request));
+const libraries = [library, resolveLibrary(__filename)];
+const packageName = request
+  .split(/[\\/]/)
+  .slice(0, request.startsWith('@') ? 2 : 1)
+  .join(path.sep);
+const locations = path.isAbsolute(request)
+  ? [[request]]
+  : /^\.{1,2}(?:[\\/]|$)/.test(request)
+    ? [[path.resolve(__dirname, request)]]
+    : (require.resolve.paths(request) || []).map((base) => [path.join(base, request), path.join(base, packageName)]);
+const manifests = [];
+const realEntry = fs.realpathSync(library.entry);
+// Keep the requested package's metadata even when its main crosses a package boundary.
+// Resolving the entry first preserves CommonJS lookup rules, including package exports.
+for (const candidates of locations) {
+  const directories = [...new Set(candidates)].filter((location) =>
+    fs.statSync(location, { throwIfNoEntry: false })?.isDirectory()
+  );
+  const selected = directories.some((location) => {
+    const relative = path.relative(fs.realpathSync(location), realEntry);
+    if (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith('..' + path.sep)) {
+      return true;
+    }
+    try {
+      return require.resolve(location + path.sep) === library.entry;
+    } catch (error) {
+      if (error.code !== 'MODULE_NOT_FOUND') {
+        throw error;
+      }
+      return false;
+    }
+  });
+  if (selected) {
+    for (const location of directories) {
+      const manifest = path.join(location, 'package.json');
+      if (fs.existsSync(manifest)) {
+        manifests.push(manifest);
+      }
+    }
+    break;
+  }
+}
+const { isEqual } = require(library.entry);
+const output = benchmarkOutput(process.argv[3] || null, libraries, manifests);
 const mode = process.argv[2] || 'default';
 if (!['default', 'strict', 'loose'].includes(mode)) {
   throw new Error('Unknown mode');
@@ -66,7 +113,7 @@ const result = {
   durationMs: performance.now() - started,
   node: process.version
 };
-if (process.argv[3]) {
-  fs.writeFileSync(path.resolve(process.argv[3]), JSON.stringify(result, null, 2) + '\n');
+if (output) {
+  fs.writeFileSync(benchmarkOutput(output, libraries, manifests), JSON.stringify(result, null, 2) + '\n');
 }
 console.log(JSON.stringify(result));

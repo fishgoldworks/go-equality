@@ -3,14 +3,14 @@
 const CollectionMatcher = require('./matchCollection');
 const { mapEntries, mapKeys, mapHas, mapGet, setValues, setHas } = require('./typeInfo');
 
-// null means structural/unboxing candidates are possible. Functions are atomic:
-// distinct functions never compare equal, even when they have equals() methods.
+// null means keys may need structural comparison or wrapper unboxing.
+// In these standard modes, functions match only by reference.
 function keyDomain(collection, iterate) {
   let domain = 'empty';
   for (const key of iterate.call(collection)) {
     const type = key === null ? 'null' : typeof key;
-    // HTMLDDA is not a primitive undefined key; native membership and loose
-    // primitive coercion are not interchangeable for this browser object.
+    // document.all is an object despite its typeof result. It must not use
+    // the native-key shortcut for primitive undefined values.
     if (type === 'object' || (type === 'undefined' && key !== undefined)) {
       return null;
     }
@@ -29,9 +29,9 @@ function nativeRelation(a, b, iterate, mode) {
     return false;
   }
   const right = keyDomain(b, iterate);
-  // SameValueZero is exactly the relation on atomic keys in default/strict
-  // mode. Loose mode needs a homogeneous type on BOTH sides: native-key
-  // matches among mixed types might need reassignment when values differ.
+  // Native SameValueZero checks match default/strict rules for these keys.
+  // Loose mode also requires one common type across both collections; mixed
+  // types may need matches reassigned when the associated values differ.
   return right !== null && (mode !== 'loose' || (left !== 'mixed' && left === right));
 }
 
@@ -49,8 +49,8 @@ module.exports = function compareCollections(node, context, isMap, size, custom 
         break;
       }
     }
-    // A full native identity matching proves equality in every mode, including
-    // sets of shared object references. It does not reserve a partial matching.
+    // If every member is present, these same-sized Sets match in each standard
+    // mode, including shared object members. Partial matches reserve nothing.
     if (allPresent) {
       return true;
     }

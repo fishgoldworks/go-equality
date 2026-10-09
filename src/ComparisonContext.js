@@ -3,7 +3,7 @@
 const compareObjects = require('./compareObjects');
 const { typeInfo } = require('./typeInfo');
 
-// Include browser HTMLDDA objects without allocating primitive wrappers.
+// Include document.all despite its unusual typeof result, without boxing primitives.
 const isObject = (value) =>
   value !== null && (typeof value === 'object' || (typeof value === 'undefined' && value !== undefined));
 const sameValueZero = (a, b) => a === b || (a !== a && b !== b);
@@ -11,8 +11,8 @@ const sameValueZero = (a, b) => a === b || (a !== a && b !== b);
 class ComparisonContext {
   constructor(mode) {
     this.mode = mode;
-    // The context never escapes one synchronous comparison. Its nodes already
-    // hold their inputs strongly; Map avoids a WeakMap allocation for EVERY row.
+    // This state lives for one synchronous comparison, and nodes already retain
+    // their inputs. Map avoids allocating a WeakMap for each row.
     this.pairs = new Map();
     this.types = new Map();
     this.pending = [];
@@ -100,14 +100,14 @@ class ComparisonContext {
     if (!node.valid) {
       return false;
     }
-    // A fully checked leaf has no provisional assumptions to invalidate. Self
-    // edges are tautologies in the greatest-fixed-point relation, not blockers.
+    // A fully checked leaf cannot fail later. A dependency on the pair itself
+    // adds no further condition, so it does not prevent returning true.
     return node.expanded && !node.hasDependencies && !node.collection ? true : node;
   }
 
   probe(left, right) {
-    // Most rejected collection candidates are settled leaves. Expand them now
-    // without first retaining a queue entry for every unsuccessful trial.
+    // Most rejected collection candidates have no unresolved children. Check
+    // them now to avoid allocating queue entries for unsuccessful trials.
     const ref = this.pair(left, right, false);
     if (typeof ref === 'boolean') {
       return ref;
@@ -115,8 +115,8 @@ class ComparisonContext {
     const unexpanded = !ref.expanded;
     this.expand(ref);
     if (!ref.queued && !ref.hasDependencies && !ref.collection) {
-      // The collection edge cache retains the boolean result. A settled leaf
-      // cannot later be invalidated; provisional graph nodes MUST stay indexed.
+      // The collection cache keeps the boolean result. Fully checked leaves can
+      // be removed, but pairs with unresolved dependencies must stay indexed.
       this.forgetLeaf(ref);
       return ref.valid;
     }
@@ -131,7 +131,7 @@ class ComparisonContext {
   forgetLeaf(node) {
     const first = this.pairs.get(node.left);
     if (first === node) {
-      // An index header that also owns alternative pairs must remain available.
+      // Keep the first pair if it also holds other pairs for the same left value.
       if (!node.alternatives) {
         this.pairs.delete(node.left);
       }
@@ -183,8 +183,8 @@ class ComparisonContext {
       return true;
     }
     parent.hasDependencies = true;
-    // Most deterministic children have just one parent. Allocate an array only
-    // for genuine sharing; adjacent duplicate dependencies need no new entry.
+    // Most required child pairs have one parent. Allocate an array only when
+    // another parent needs the pair, and skip adjacent duplicate parents.
     const parents = ref.dependants;
     if (!parents) {
       ref.dependants = parent;
@@ -206,8 +206,8 @@ class ComparisonContext {
         continue;
       }
       current.valid = false;
-      // Required property/value edges propagate failure immediately. Only
-      // alternative collection edges need a queued matching repair.
+      // Required property or value failures make their parents unequal immediately.
+      // Collections are queued to search for another assignment.
       if (current.watchers) {
         for (const parent of current.watchers) {
           this.enqueue(parent);
@@ -231,9 +231,9 @@ class ComparisonContext {
     if (typeof root === 'boolean') {
       return root;
     }
-    // A finite, monotone greatest fixed point: assumptions only turn false.
-    // Drain/reuse the FIFO queue rather than retaining a processed entry for
-    // every level of a deep chain. Mandatory invalidation is also iterative.
+    // Process pairs until all are checked or the root fails; pairs only change
+    // from equal to unequal. Clear processed queue entries to release their
+    // references. Failure propagation also uses iteration.
     let next = 0;
     while (this.pending.length && root.valid) {
       const node = this.pending[next];

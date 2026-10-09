@@ -1,6 +1,6 @@
 'use strict';
 const assert = require('node:assert/strict');
-const path = require('node:path');
+const resolveLibrary = require('./resolve-library');
 const { performance } = require('node:perf_hooks');
 const api = require('..');
 const { graphEqual } = require('../test/helpers/oracle');
@@ -20,7 +20,8 @@ if (!Number.isSafeInteger(seeds) || seeds < 1) {
   throw new Error('seeds must be a positive safe integer');
 }
 const baselinePath = option('--baseline', null);
-const baseline = baselinePath ? require(path.resolve(baselinePath)) : null;
+const baselineLibrary = baselinePath ? resolveLibrary(baselinePath) : null;
+const baseline = baselineLibrary ? require(baselineLibrary.entry) : null;
 function rng(seed) {
   let x = seed;
   return (n) => {
@@ -101,7 +102,7 @@ console.log(
       scenarios,
       directionalAssertions: scenarios * 2,
       reference: baseline
-        ? 'supplied baseline ' + require(path.resolve(baselinePath, 'package.json')).version
+        ? 'supplied baseline ' + (baselineLibrary.version ?? '(version unknown)')
         : 'independent eager fixed-point oracle',
       passed: true,
       durationMs: Math.round(performance.now() - start)

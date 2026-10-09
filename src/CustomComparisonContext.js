@@ -3,8 +3,8 @@
 const ComparisonContext = require('./ComparisonContext');
 const compareObjects = require('./compareObjects');
 
-// Opt-in traversal shares the existing graph engine, but never lets an identity
-// or native-membership shortcut bypass a caller's decision on a reached pair.
+// Custom comparisons use the same graph engine. The callback must run before
+// identity or native collection shortcuts can decide equality for a pair.
 class CustomComparisonContext extends ComparisonContext {
   constructor(mode, customizer) {
     super(mode);
@@ -13,7 +13,7 @@ class CustomComparisonContext extends ComparisonContext {
 
   pair(left, right, queue = true) {
     // A local call avoids exposing the comparison context as the callback's this.
-    // Original values reach the customizer before unboxing or instance hooks.
+    // Pass the original values before unboxing wrappers or calling equals() methods.
     const customizer = this.customizer;
     const result = customizer(left, right);
     if (result === true || result === false) {

@@ -4,11 +4,13 @@ const path = require('node:path');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const version = require('../package.json').version;
+const license = fs.readFileSync(path.resolve(__dirname, '../LICENSE.md'), 'utf8').replace(/\r\n/g, '\n').trim();
 
-function verifyLoaders(directory = path.resolve(__dirname, '../dist')) {
+function verifyLoaders(directory = path.join(require('./package-layout').packageRoot, 'dist')) {
   let checks = 0;
   for (const file of ['go-equality.js', 'go-equality.min.js']) {
     const source = fs.readFileSync(path.join(directory, file), 'utf8');
+    assert.ok(source.includes(license), 'Standalone bundle must preserve the full licence notice: ' + file);
     assert.equal(source.startsWith('/*! go-equality v' + version + ' |'), true, 'Stale bundle version: ' + file);
     if (file.endsWith('.min.js')) {
       const code = source.replace(/^\/\*![\s\S]*?\*\/\s*/, '').trim();

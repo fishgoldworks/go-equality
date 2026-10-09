@@ -5,7 +5,8 @@ const { isDeepStrictEqual } = require('node:util');
 const api = require('./helpers/api');
 const { perfectMatching, graphEqual } = require('./helpers/oracle');
 
-// Exhaustive coverage of all 2^(3*3) bipartite edge patterns, in both directions.
+// Check all 512 possible match patterns between two groups of three values,
+// comparing each pattern in both directions.
 for (let bits = 0; bits < 512; bits++) {
   const matrix = Array.from({ length: 3 }, (_, i) =>
     Array.from({ length: 3 }, (_, j) => !!(bits & (1 << (i * 3 + j))))
@@ -61,8 +62,8 @@ function materialize(spec, reverse = false, mutate = false) {
   const value = (v) => (Object.hasOwn(v, 'ref') ? nodes[v.ref] : v.value);
   spec.forEach((n, i) => {
     const node = nodes[i];
-    // Build first, then reorder real entries so duplicate keys retain identical
-    // last-write semantics in both materializations.
+    // Build first, then reorder entries. Repeated keys must keep their final
+    // assigned value in both versions.
     n.items.forEach(([k, v], j) => {
       if (n.kind === 0) {
         node['p' + j] = value(v);

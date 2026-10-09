@@ -1,25 +1,46 @@
 'use strict';
+const runCleanups = require('./cleanup');
 // Resource regression, separate from unit coverage/timing benchmarks. It asserts
 // correct results under a fixed V8 old-space budget, not a wall-clock threshold.
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { parseArgs } = require('node:util');
+const { describeTarball } = require('./release-tools');
+const { values } = parseArgs({ options: { child: { type: 'boolean' }, tarball: { type: 'string' } } });
 
-if (process.argv[2] !== '--child') {
-  const result = spawnSync(
-    process.execPath,
-    ['--expose-gc', '--max-old-space-size=64', '--max-semi-space-size=4', __filename, '--child'],
-    { cwd: path.resolve(__dirname, '..'), encoding: 'utf8', maxBuffer: 2 * 1024 * 1024 }
-  );
-  if (result.error) {
-    throw result.error;
+if (!values.child) {
+  const candidate = values.tarball !== undefined ? describeTarball(values.tarball) : undefined;
+  const fixture = candidate ? require('./consumer-package')(candidate) : undefined;
+  const errors = [];
+  try {
+    const result = spawnSync(
+      process.execPath,
+      ['--expose-gc', '--max-old-space-size=64', '--max-semi-space-size=4', __filename, '--child'],
+      {
+        cwd: path.resolve(__dirname, '..'),
+        encoding: 'utf8',
+        maxBuffer: 2 * 1024 * 1024,
+        // Explicit candidates take precedence; standalone diagnostic overrides remain available.
+        env: fixture ? { ...process.env, EQUALITY_ENTRY: fixture.entry, EQUALITY_FORMAT: 'commonjs' } : process.env
+      }
+    );
+    if (result.error) {
+      throw result.error;
+    }
+    assert.equal(
+      result.status,
+      0,
+      'Constrained-heap comparison failed (' + (result.signal || result.status) + ').\n' + result.stdout + result.stderr
+    );
+    if (candidate && describeTarball(candidate.tarball).sha256 !== candidate.sha256) {
+      throw new Error('Candidate changed during memory verification.');
+    }
+    process.stdout.write(result.stdout);
+  } catch (error) {
+    errors.push(error);
   }
-  assert.equal(
-    result.status,
-    0,
-    'Constrained-heap comparison failed (' + (result.signal || result.status) + ').\n' + result.stdout + result.stderr
-  );
-  process.stdout.write(result.stdout);
+  runCleanups([() => fixture?.cleanup()], errors);
 } else {
   const api = require('../test/helpers/api');
   const results = [];

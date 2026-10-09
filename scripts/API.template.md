@@ -1,0 +1,943 @@
+# Go Equality API reference
+
+Version [{{VERSION}}](../CHANGELOG.md). Return to the [README](../README.md) for installation, runtime requirements and usage.
+
+## Contents
+
+{{TOC}}
+
+## API summary
+
+Choose a standard comparison when its type and content rules fit your data. Use a custom comparison when you need to decide equality differently for particular values, while the library compares the surrounding structure.
+
+Examples assume named imports from `go-equality` unless an import is shown. `// =>` comments show results or exceptions. In parameter tables, `unknown` means any JavaScript value may be supplied; equality comparisons do not narrow its TypeScript type. The attached methods are read-only, non-enumerable properties of `isEqual`; the root export object is not callable.
+
+| API                                                                                                  | Description                                                                                                                                                    | Returns                                                                                                                                                                                           |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`isEqual(value, other)`](#isequalvalue-other)                                                       | Determines whether two values are deeply equal. Primitive wrappers are compared as their wrapped values.                                                       | **`boolean`**<br><br>`true` if the values are deeply equal; otherwise `false`.                                                                                                                    |
+| [`isLooseEqual(value, other)`](#islooseequalvalue-other)                                             | Determines whether two values are deeply equal, allowing primitive conversions such as `1` matching `'1'`.                                                     | **`boolean`**<br><br>`true` if the values are deeply equal under loose comparison rules; otherwise `false`.                                                                                       |
+| [`isStrictEqual(value, other)`](#isstrictequalvalue-other)                                           | Determines whether two values are deeply equal, preserving primitive types and distinguishing wrapper objects from primitive values.                           | **`boolean`**<br><br>`true` if the values are deeply equal under strict comparison rules; otherwise `false`.                                                                                      |
+| [`isEqual.strict(value, other)`](#isequalstrictvalue-other)                                          | Determines whether two values are deeply equal, preserving primitive types and distinguishing wrapper objects from primitive values. Alias of `isStrictEqual`. | **`boolean`**<br><br>`true` if the values are deeply equal under strict comparison rules; otherwise `false`.                                                                                      |
+| [`isEqual.loose(value, other)`](#isequalloosevalue-other)                                            | Determines whether two values are deeply equal, allowing primitive conversions such as `1` matching `'1'`. Alias of `isLooseEqual`.                            | **`boolean`**<br><br>`true` if the values are deeply equal under loose comparison rules; otherwise `false`.                                                                                       |
+| [`isEqual.custom(value, other, customizer, options?)`](#isequalcustomvalue-other-customizer-options) | Determines whether two values are deeply equal, using your callback to override individual comparisons.                                                        | **`boolean`**<br><br>`true` if the values are equal under the custom rules and fallback mode; otherwise `false`.                                                                                  |
+| [`isEqual.create(customizer, options?)`](#isequalcreatecustomizer-options)                           | Creates a reusable function for deep comparison using your callback and a saved fallback mode.                                                                 | **`Function`** — `(value, other) => boolean`<br><br>A reusable function that compares two values. When called, it returns `true` if they are equal under the configured rules; otherwise `false`. |
+
+All three standard modes perform **deep comparison**; strict mode is not JavaScript's `===` operator. For custom strict or loose comparison, pass `{ mode: 'strict' }` or `{ mode: 'loose' }` to `isEqual.custom()` or `isEqual.create()`. Use these two methods for all custom comparisons: the strict and loose functions do not have their own `.custom()` or `.create()` methods.
+
+See [supported types](#supported-types) for the values compared structurally and those that require the same reference.
+
+## Equality
+
+### `isEqual(value, other)`
+
+Determines whether two values are deeply equal.
+
+For arrays and supported objects, it compares their contents, including nested values. Two separate objects can therefore compare equal when their contents match. Use this default mode when a primitive wrapper, such as `Object(1)`, should match its contained value, `1`.
+
+After extracting wrapper values, primitive types must match: the number `1` does not equal the string `'1'`. Objects normally need matching constructors and own property keys and values, including non-enumerable and symbol-keyed properties. Supported built-ins also compare their relevant contents; Maps and Sets do not need the same insertion order. See [custom equality](#custom-equality) for the `equals()` methods that can override these checks.
+
+**Parameters**
+
+| Parameter | Type      | Description                  |
+| --------- | --------- | ---------------------------- |
+| `value`   | `unknown` | The first value to compare.  |
+| `other`   | `unknown` | The second value to compare. |
+
+**Returns:** `boolean` — `true` when the values are deeply equal under these rules; otherwise `false`.
+
+**Errors:** An invoked `equals()` method returning a non-boolean throws `TypeError`. Errors from getters, proxy traps, invoked methods and invalid binary views propagate. A normal mismatch returns `false`; see [errors and supported inputs](#errors-and-supported-inputs).
+
+**Examples**
+
+Compare a saved record with a fresh copy, then with an edited copy:
+
+<!-- prettier-ignore -->
+```javascript
+const saved = { user: { id: 1, name: 'Alex' } };
+const unchanged = { user: { id: 1, name: 'Alex' } };
+const edited = { user: { id: 1, name: 'Sam' } };
+
+isEqual(saved, unchanged);                 // => true
+isEqual(saved, edited);                    // => false
+```
+
+Compare arrays and objects by their contents:
+
+<!-- prettier-ignore -->
+```javascript
+isEqual([1, 2, 3], [1, 2, 3]);             // => true
+isEqual({ a: 1, b: 2 }, { b: 2, a: 1 });   // => true
+isEqual(1, 1);                             // => true
+isEqual(1, new Number(1));                 // => true
+isEqual(NaN, NaN);                         // => true
+isEqual(-0, +0);                           // => true
+```
+
+<!-- prettier-ignore -->
+```javascript
+isEqual(1, '1');                           // => false
+isEqual(null, undefined);                  // => false
+isEqual({}, { a: undefined });             // => false
+isEqual([1, 2, 3], [2, 3, 1]);             // => false
+isEqual(Array(1), [undefined]);            // => false
+isEqual(new Date(0), new Date(1));         // => false
+isEqual(
+  function () {},
+  function () {}
+);                                         // => false
+isEqual(Symbol('abc'), Symbol('abc'));     // => false
+```
+
+<!-- prettier-ignore -->
+```javascript
+const first = { user: { id: 1 }, roles: ['reader', 'editor'] };
+const second = { roles: ['reader', 'editor'], user: { id: 1 } };
+const firstSet = new Set([{ id: 1 }, { id: 2 }]);
+const secondSet = new Set([{ id: 2 }, { id: 1 }]);
+const firstMap = new Map([[{ id: 1 }, 'a']]);
+const secondMap = new Map([[{ id: 1 }, 'a']]);
+const changedMap = new Map([['a', 2]]);
+
+isEqual(first, second);                    // => true
+isEqual(firstSet, secondSet);              // => true
+isEqual(firstMap, secondMap);              // => true
+isEqual(new Map([['a', 1]]), changedMap);  // => false
+```
+
+**Requires native BigInt support:**
+
+<!-- prettier-ignore -->
+```javascript
+isEqual(Object(1n), 1n);                   // => true
+```
+
+**Notes**
+
+`Number`, `String`, `Boolean`, `BigInt` and `Symbol` wrappers use their primitive values. `NaN` equals `NaN`, and positive and negative zero are equal.
+
+Only the wrapped primitive value matters: extra properties, overridden `valueOf`, and wrapper `equals()` methods are ignored. Built-in wrapper methods read the actual value; an arbitrary object cannot become a wrapper by defining `valueOf`. Use [`isStrictEqual`](#isstrictequalvalue-other) when a wrapper must remain distinct from its primitive value or when its own properties matter. Distinct functions and unsupported objects require the same reference unless a custom rule applies. See [custom equality](#custom-equality) and [errors and supported inputs](#errors-and-supported-inputs).
+
+---
+
+### `isLooseEqual(value, other)`
+
+Determines whether two values are deeply equal, allowing primitive conversions such as `1` matching `'1'`.
+
+Use this mode when a primitive type difference should not by itself make otherwise matching data unequal. The conversions also apply inside arrays, objects and collections. Wrapper objects are compared as their contained values, and ordinary objects do not need to share a constructor.
+
+Unlike JavaScript's general `==` operator, arbitrary arrays, dates, and objects are not converted into primitives. Built-in kinds still matter: a `Map` is not a `Set`, and different typed-array element kinds are not interchangeable.
+
+**Parameters**
+
+| Parameter | Type      | Description                  |
+| --------- | --------- | ---------------------------- |
+| `value`   | `unknown` | The first value to compare.  |
+| `other`   | `unknown` | The second value to compare. |
+
+**Returns:** `boolean` — `true` when the values are deeply equal under the loose rules; otherwise `false`.
+
+**Errors:** An invoked `equals()` method returning a non-boolean throws `TypeError`. Errors from getters, proxy traps, invoked methods and invalid binary views propagate. A normal mismatch returns `false`; see [errors and supported inputs](#errors-and-supported-inputs).
+
+**Examples**
+
+Compare a numeric quantity with the same quantity supplied as text:
+
+<!-- prettier-ignore -->
+```javascript
+isLooseEqual({ quantity: 2 }, { quantity: '2' });    // => true
+isLooseEqual({ quantity: 2 }, { quantity: '3' });    // => false
+isEqual({ quantity: 2 }, { quantity: '2' });         // => false
+```
+
+Other primitive conversions and nested comparisons:
+
+<!-- prettier-ignore -->
+```javascript
+isLooseEqual(null, undefined);                       // => true
+isLooseEqual(1, '1');                                // => true
+isLooseEqual(1, true);                               // => true
+isLooseEqual(new Number(1), new String('1'));        // => true
+isLooseEqual({ enabled: true }, { enabled: 1 });     // => true
+isLooseEqual([1, false], ['1', 0]);                  // => true
+isLooseEqual(new Set([0, '']), new Set(['', '0']));  // => true
+isLooseEqual(NaN, NaN);                              // => true
+```
+
+<!-- prettier-ignore -->
+```javascript
+class First {
+  constructor() {
+    this.value = 1;
+  }
+}
+
+class Second {
+  constructor() {
+    this.value = '1';
+  }
+}
+
+isLooseEqual(new First(), new Second());             // => true
+isEqual(new First(), new Second());                  // => false
+isStrictEqual(new First(), new Second());            // => false
+```
+
+<!-- prettier-ignore -->
+```javascript
+isLooseEqual(true, 'true');                          // => false
+isLooseEqual(false, undefined);                      // => false
+isLooseEqual([], 0);                                 // => false
+isLooseEqual({ valueOf: () => 1 }, 1);               // => false
+isLooseEqual(new Map(), new Set());                  // => false
+isLooseEqual(
+  new Uint8Array([1]),
+  new Uint16Array([1])
+);                                                   // => false
+```
+
+**Requires native BigInt support:**
+
+<!-- prettier-ignore -->
+```javascript
+isLooseEqual(1, 1n);                                 // => true
+```
+
+**Notes**
+
+Coercion also applies to nested primitive values, collection members, and keys. Missing own properties, array order, and built-in element kinds still matter. Loose equality is not transitive: `''` equals `0`, and `0` equals `'0'`, but `''` does not equal `'0'`. `Map`/`Set` matching can reassign an earlier match to find a complete one-to-one assignment. See [comparison rules](#comparison-rules) and [errors and supported inputs](#errors-and-supported-inputs).
+
+---
+
+### `isStrictEqual(value, other)`
+
+Determines whether two values are deeply equal, preserving primitive types and distinguishing wrapper objects from primitive values.
+
+Use this mode when both the contents and the distinction between a primitive and its wrapper matter. It compares nested contents of arrays and supported objects, so separate objects can still be equal. For example, two `Object(1)` wrappers can match, while `Object(1)` and `1` differ. Ordinary constructors must match unless applicable `equals()` methods override that check.
+
+Strict mode performs deep comparison rather than JavaScript's `===` reference check. Its special-value and wrapper rules are described in the examples and notes below.
+
+**Parameters**
+
+| Parameter | Type      | Description                  |
+| --------- | --------- | ---------------------------- |
+| `value`   | `unknown` | The first value to compare.  |
+| `other`   | `unknown` | The second value to compare. |
+
+**Returns:** `boolean` — `true` when the values are deeply equal under the strict rules; otherwise `false`.
+
+**Errors:** An invoked `equals()` method returning a non-boolean throws `TypeError`. Errors from getters, proxy traps, invoked methods and invalid binary views propagate. A normal mismatch returns `false`; see [errors and supported inputs](#errors-and-supported-inputs).
+
+**Examples**
+
+Match separate records while preserving the types of their nested values:
+
+<!-- prettier-ignore -->
+```javascript
+isStrictEqual({ quantity: 2 }, { quantity: 2 });     // => true
+isStrictEqual({ quantity: 2 }, { quantity: '2' });   // => false
+```
+
+Separate objects and wrapper objects can still compare equal:
+
+<!-- prettier-ignore -->
+```javascript
+isStrictEqual([1, 2, 3], [1, 2, 3]);                 // => true
+isStrictEqual({ a: 1, b: 2 }, { b: 2, a: 1 });       // => true
+isStrictEqual(1, 1);                                 // => true
+isStrictEqual(NaN, NaN);                             // => true
+isStrictEqual(-0, +0);                               // => true
+isStrictEqual(new Number(1), new Number(1));         // => true
+isStrictEqual(new Number(NaN), new Number(NaN));     // => true
+```
+
+<!-- prettier-ignore -->
+```javascript
+isStrictEqual(1, '1');                               // => false
+isStrictEqual(1, new Number(1));                     // => false
+isStrictEqual(null, undefined);                      // => false
+isStrictEqual({}, { a: undefined });                 // => false
+isStrictEqual([1], ['1']);                           // => false
+isStrictEqual(
+  function () {},
+  function () {}
+);                                                   // => false
+isStrictEqual(Symbol('abc'), Symbol('abc'));         // => false
+```
+
+<!-- prettier-ignore -->
+```javascript
+const first = Object.assign(new Number(1), { label: 'first' });
+const second = Object.assign(new Number(1), { label: 'second' });
+
+isEqual(first, second);                              // => true
+isLooseEqual(first, second);                         // => true
+isStrictEqual(first, second);                        // => false
+```
+
+**Notes**
+
+`NaN` equals `NaN`, and positive and negative zero are equal. Two wrappers are compared by their wrapped values and own properties, so additional wrapper properties matter in this mode.
+
+Strict mode still performs deep comparisons and ignores `Map`/`Set` insertion order. Separate objects can be equal, property descriptor flags can differ, and a shared child can equal separate children with the same values. When both objects have `equals()` methods that return `true`, those methods override structural and constructor checks. See [custom equality](#custom-equality), [circular references](#circular-references), and [errors and supported inputs](#errors-and-supported-inputs).
+
+---
+
+### `isEqual.strict(value, other)`
+
+Determines whether two values are deeply equal, preserving primitive types and distinguishing wrapper objects from primitive values.
+
+This is the same function as [`isStrictEqual`](#isstrictequalvalue-other), accessed through `isEqual`. Use either form for the same result. It compares object contents, so separate objects can be equal.
+
+**Parameters**
+
+| Parameter | Type      | Description                  |
+| --------- | --------- | ---------------------------- |
+| `value`   | `unknown` | The first value to compare.  |
+| `other`   | `unknown` | The second value to compare. |
+
+**Returns:** `boolean` — `true` when the values are deeply equal under the strict rules; otherwise `false`.
+
+**Errors:** An invoked `equals()` method returning a non-boolean throws `TypeError`. Errors from getters, proxy traps, invoked methods and invalid binary views propagate. A normal mismatch returns `false`; see [errors and supported inputs](#errors-and-supported-inputs).
+
+**Examples**
+
+<!-- prettier-ignore -->
+```javascript
+isEqual.strict(
+  { status: 'open' },
+  { status: 'open' }
+);                                           // => true
+isEqual.strict({ page: 2 }, { page: '2' });  // => false
+isEqual.strict(1, Object(1));                // => false
+isEqual.strict === isStrictEqual;            // => true
+
+const strictEqual = isEqual.strict;
+strictEqual([1, 2], [1, 2]);                 // => true
+```
+
+**Notes**
+
+The property is read-only and non-enumerable. You can destructure the function and call it independently. See [`isStrictEqual`](#isstrictequalvalue-other) for all strict-mode rules and exceptions.
+
+---
+
+### `isEqual.loose(value, other)`
+
+Determines whether two values are deeply equal, allowing primitive conversions such as `1` matching `'1'`.
+
+This is the same function as [`isLooseEqual`](#islooseequalvalue-other), accessed through `isEqual`. Use either form for the same result. Ordinary objects are compared by their supported contents rather than converted into primitives.
+
+**Parameters**
+
+| Parameter | Type      | Description                  |
+| --------- | --------- | ---------------------------- |
+| `value`   | `unknown` | The first value to compare.  |
+| `other`   | `unknown` | The second value to compare. |
+
+**Returns:** `boolean` — `true` when the values are deeply equal under the loose rules; otherwise `false`.
+
+**Errors:** An invoked `equals()` method returning a non-boolean throws `TypeError`. Errors from getters, proxy traps, invoked methods and invalid binary views propagate. A normal mismatch returns `false`; see [errors and supported inputs](#errors-and-supported-inputs).
+
+**Examples**
+
+<!-- prettier-ignore -->
+```javascript
+isEqual.loose({ page: 2 }, { page: '2' });             // => true
+isEqual.loose(null, undefined);                        // => true
+isEqual.loose({ active: true }, { active: 'true' });   // => false
+isEqual.loose([], 0);                                  // => false
+isEqual.loose === isLooseEqual;                        // => true
+```
+
+**Notes**
+
+The property is read-only and non-enumerable. It does not ignore missing keys or
+array order. See [`isLooseEqual`](#islooseequalvalue-other) for the comparison rules.
+
+---
+
+### `isEqual.custom(value, other, customizer, options?)`
+
+Determines whether two values are deeply equal, using your callback to override individual comparisons.
+
+Use this for a comparison that needs a special rule, such as ignoring case in strings. Your callback, called a **customiser**, can return `true` or `false` to decide the pair it receives, or `undefined` to let the selected standard mode compare it. The library applies the rule during deep comparison; the callback is not guaranteed to visit every nested value.
+
+This call returns the comparison result immediately. Use [`isEqual.create`](#isequalcreatecustomizer-options) when you want to save the callback and mode in a reusable function.
+
+**Parameters**
+
+| Parameter    | Type                 | Default     | Description                                                                                                              |
+| ------------ | -------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `value`      | `unknown`            | —           | The first value to compare.                                                                                              |
+| `other`      | `unknown`            | —           | The second value to compare.                                                                                             |
+| `customizer` | `EqualityCustomizer` | —           | Synchronous `(value, other) => boolean \| undefined` callback. Receives original values, with no object bound as `this`. |
+| `options?`   | `EqualityOptions`    | `undefined` | Optional object with an own `mode`: `'default'`, `'strict'` or `'loose'`.                                                |
+
+An omitted or `undefined` `mode` selects `'default'`. See [caller customisers](#caller-customisers) for configuration validation and callback rules.
+
+**Returns:** `boolean` — the comparison result. It never returns `undefined` or a comparator function.
+
+**Errors:** Invalid customisers, options or callback results throw `TypeError`. Callback, hook, getter and proxy errors propagate.
+
+**Examples**
+
+Apply a partial rule to strings, with normal comparison for other values:
+
+<!-- prettier-ignore -->
+```javascript
+function ignoreStringCase(left, right) {
+  if (typeof left === 'string' && typeof right === 'string') {
+    return left.toLowerCase() === right.toLowerCase();
+  }
+  return undefined;
+}
+
+isEqual.custom('ADMIN', 'admin', ignoreStringCase);      // => true
+isEqual.custom('ADMIN', 'user', ignoreStringCase);       // => false
+
+const selected = new Set(['ADMIN', 'USER']);
+const refreshed = new Set(['user', 'admin']);
+isEqual.custom(selected, refreshed, ignoreStringCase);   // => true
+```
+
+Choose a fallback mode for values your rule leaves undecided:
+
+<!-- prettier-ignore -->
+```javascript
+const fallback = () => undefined;
+const strict = { mode: 'strict' };
+const loose = { mode: 'loose' };
+
+isEqual.custom(2, '2', fallback, strict);                // => false
+isEqual.custom(2, '2', fallback, loose);                 // => true
+isEqual.custom(1, 1, () => false);                       // => false
+isEqual.custom(1, 2, fallback);                          // => false
+isEqual.custom(1, 2);                                    // => throws TypeError
+isEqual.custom(1, 2, () => 'yes');                       // => throws TypeError
+```
+
+**Notes**
+
+The customiser runs before identity checks, wrapper unboxing and instance `equals()` methods. Returning a boolean decides the whole pair immediately; `false` does not request fallback, and `true` for objects skips their children. The callback is not a guaranteed visitor. See the [custom equality walkthrough](#when-custom-comparison-is-useful) for nested decisions and [`isEqual.create`](#isequalcreatecustomizer-options) to reuse a configured comparator.
+
+---
+
+### `isEqual.create(customizer, options?)`
+
+Creates a reusable function for deep comparison using your callback and a saved fallback mode.
+
+Use this when several comparisons should share the same custom rule. Creating the function checks the customiser and options once and saves the selected mode. Calling the returned function later compares two values and returns a boolean, using the same rules as [`isEqual.custom`](#isequalcustomvalue-other-customizer-options).
+
+Creation does not call the customiser, compare any values or change `isEqual` globally.
+
+**Parameters**
+
+| Parameter    | Type                 | Default     | Description                                                                                                                            |
+| ------------ | -------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `customizer` | `EqualityCustomizer` | —           | Synchronous `(value, other) => boolean \| undefined` callback, as in [`isEqual.custom`](#isequalcustomvalue-other-customizer-options). |
+| `options?`   | `EqualityOptions`    | `undefined` | Optional object with an own `mode`: `'default'`, `'strict'` or `'loose'`.                                                              |
+
+An omitted or `undefined` `mode` selects `'default'`. See [caller customisers](#caller-customisers) for configuration validation.
+
+**Returns:** `EqualityComparator` — a plain `(value, other) => boolean` function. It does not itself have `.strict`, `.loose`, `.custom` or `.create` methods.
+
+**Errors:** Invalid customisers or options throw `TypeError` at creation. Invalid callback results throw `TypeError` when comparing; callback and inspection errors propagate.
+
+**Examples**
+
+Compare user selections by ID while ignoring refreshed display names. Accepting a user-reference pair skips its other properties:
+
+<!-- prettier-ignore -->
+```javascript
+class UserReference {
+  constructor(id, displayName) {
+    this.id = id;
+    this.displayName = displayName;
+  }
+}
+
+function compareUsers(left, right) {
+  if (left instanceof UserReference && right instanceof UserReference) {
+    return left.id === right.id;
+  }
+  return undefined;
+}
+
+const sameSelection = isEqual.create(compareUsers);
+const saved = new UserReference('user-42', 'Alex Kim');
+const refreshed = new UserReference('user-42', 'Alex K.');
+const reassigned = new UserReference('user-99', 'Sam Lee');
+
+sameSelection(saved, refreshed);                 // => true
+sameSelection(saved, reassigned);                // => false
+isEqual(saved, refreshed);                       // => false
+typeof sameSelection === 'function';             // => true
+```
+
+This rule detects changes to a selection, not to the complete user record. A UI that displays the name must still refresh when the name changes.
+
+The selected mode is captured when the comparator is created:
+
+<!-- prettier-ignore -->
+```javascript
+const options = { mode: 'strict' };
+const fallback = () => undefined;
+const compare = isEqual.create(fallback, options);
+options.mode = 'loose';
+
+compare(1, '1');                                 // => false
+isEqual.custom(1, '1', fallback, options);       // => true
+isEqual.create(fallback, { mode: 'unknown' });   // => throws TypeError
+```
+
+**Notes**
+
+Changing the `options` object later does not change the saved mode. The callback can still read updated variables from its surrounding scope. Each call starts with fresh tracking for pairs, cycles and collection matches; inputs and results are not cached between calls, even after an exception.
+
+Create reusable comparators outside hot loops. The factory validates configuration without running the callback; invalid callback results are rejected when it runs during a comparison. See [custom equality](#custom-equality) for the full callback contract.
+
+## Behaviour
+
+### Supported types
+
+**Dates and regular expressions are compared by their contents. Promises and other unsupported objects require the same object reference.** The library cannot inspect every kind of internal state.
+
+The tables below describe the standard comparison rules. A customiser can return `true` or `false` to decide equality for the two values it receives, or `undefined` to use the selected standard mode. Objects can also define equality through `equals()` methods. See [custom equality](#custom-equality) for how these rules interact and which values are passed to a customiser.
+
+#### Value and structural comparison
+
+| Type                                                                                   | Compared state and important rules                                                                                                                                                                                                        |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Primitives:** `undefined`, `null`, `boolean`, `number`, `string`, `bigint`, `symbol` | Default/strict require matching primitive types. Loose mode permits primitive coercion. `NaN` equals `NaN`; positive and negative zero are equal. Symbols match by identity, not by their descriptions.                                   |
+| **Ordinary objects**                                                                   | Own property keys and recursively compared values, including non-enumerable and symbol-keyed properties. Property order does not matter.                                                                                                  |
+| **Null-prototype dictionaries**                                                        | Supported structurally, including `Object.create(null)`.                                                                                                                                                                                  |
+| **Ordinary custom class instances**                                                    | Own properties are compared. Default/strict require matching constructors; loose mode ignores constructor differences. Private fields are not inspected: use an instance hook or caller customiser when equality depends on hidden state. |
+| **Arrays**                                                                             | Length, existing indices, and additional own properties. Element order matters. A hole differs from explicit `undefined`.                                                                                                                 |
+| **`arguments` objects**                                                                | Indexed values, length, and custom own properties. Engine bookkeeping `callee` and `Symbol.iterator` are omitted.                                                                                                                         |
+| **`Date`**                                                                             | Timestamp. Two invalid dates are equal.                                                                                                                                                                                                   |
+| **`RegExp`**                                                                           | Pattern, built-in flags, and own properties, including `lastIndex`.                                                                                                                                                                       |
+| **`Map`**                                                                              | Unordered, one-to-one matching of complete key/value entries. Object keys may match structurally; both the key and its associated value must match.                                                                                       |
+| **`Set`**                                                                              | Unordered, one-to-one matching of members, including structural object matches. One member cannot satisfy two matches.                                                                                                                    |
+| **Typed arrays**                                                                       | Element kind, length, numeric element values, and additional own properties. `NaN` values match and signed zeros match. Different element kinds remain different even in loose mode.                                                      |
+| **Node.js `Buffer`**                                                                   | Uses the typed-array handler. `Buffer` and `Uint8Array` share an element kind but have different constructors; only loose mode can compare them across those constructors.                                                                |
+| **`ArrayBuffer`**                                                                      | Byte contents and additional own properties.                                                                                                                                                                                              |
+| **`SharedArrayBuffer`**                                                                | Byte contents and additional own properties. It is a different kind from `ArrayBuffer`. Shared backing memory must remain stable during comparison.                                                                                       |
+| **`DataView`**                                                                         | Bytes inside the view window and additional own properties, not the entire backing buffer. Different backing-buffer offsets can compare equal.                                                                                            |
+| **Boxed primitives:** `Number`, `String`, `Boolean`, `BigInt`, and `Symbol` wrappers   | Default/loose compare the wrapped primitive values and ignore extra properties on the wrappers. Strict mode compares both the wrapped values and own properties.                                                                          |
+
+These rules also apply to nested values. **Own properties** belong directly to an object rather than being inherited from its prototype. Extra own properties matter on arrays and supported built-ins, with the wrapper and `arguments` exceptions listed above. Default and strict modes also check constructors: matching built-in contents alone is not enough. See [comparison rules](#comparison-rules) for property descriptors, getters, objects from different JavaScript environments, and constructor handling.
+
+<!-- prettier-ignore -->
+```javascript
+const firstRecord = { createdAt: new Date(0) };
+const secondRecord = { createdAt: new Date(0) };
+
+isEqual(new Date(0), new Date(0));       // => true
+isEqual(new Date(0), new Date(1));       // => false
+isEqual(new Date(NaN), new Date(NaN));   // => true
+isEqual(/report/gi, /report/gi);         // => true
+isEqual(/report/g, /report/i);           // => false
+isEqual(firstRecord, secondRecord);      // => true
+
+const first = /report/g;
+const second = /report/g;
+second.lastIndex = 2;
+isEqual(first, second);                  // => false
+```
+
+#### Typed arrays
+
+The modern source test suite explicitly exercises these eleven constructors:
+
+| Element family                    | Constructors                                                                                             |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Integer and clamped number arrays | `Int8Array`, `Uint8Array`, `Uint8ClampedArray`, `Int16Array`, `Uint16Array`, `Int32Array`, `Uint32Array` |
+| Floating-point number arrays      | `Float32Array`, `Float64Array`                                                                           |
+| BigInt arrays                     | `BigInt64Array`, `BigUint64Array`                                                                        |
+
+The handler recognises native typed arrays without a fixed list of constructors. The eleven constructors above have explicit tests in the standard source suite. Additional constructors are runtime-dependent; recognition alone is not a blanket compatibility guarantee. Node.js `Buffer` is tested separately through the same handler. Creating `BigInt64Array` and `BigUint64Array` instances requires their native constructors and BigInt support; the library does not emulate them on Node 8 or other runtimes without them. Existing instances are recognised through shared typed-array intrinsics even if their constructor globals are unavailable when the library loads.
+
+**Typed arrays compare element values; raw buffers and DataViews compare bytes.** Two float arrays can therefore compare equal while their underlying buffers differ, for example because of different `NaN` bit patterns or signed-zero representations.
+
+<!-- prettier-ignore -->
+```javascript
+isEqual(
+  new Uint8Array([1, 2]),
+  new Uint8Array([1, 2])
+);                                                   // => true
+isEqual(
+  new Uint8Array([1, 2]),
+  new Uint8Array([1, 3])
+);                                                   // => false
+isEqual(new Uint8Array([1]), new Uint16Array([1]));  // => false
+isEqual(
+  new Float64Array([NaN]),
+  new Float64Array([NaN])
+);                                                   // => true
+isEqual(
+  new Float64Array([-0]),
+  new Float64Array([+0])
+);                                                   // => true
+isEqual(
+  new Float64Array([-0]).buffer,
+  new Float64Array([+0]).buffer
+);                                                   // => false
+```
+
+**Requires native BigInt and `BigInt64Array` support:**
+
+<!-- prettier-ignore -->
+```javascript
+isEqual(
+  new BigInt64Array([1n]),
+  new BigInt64Array([1n])
+);                                                   // => true
+```
+
+#### Identity-only comparison
+
+Without an applicable custom rule, these values compare equal only when both inputs refer to the **same object or function**. Matching visible text or apparent contents does not make separate instances equal.
+
+| Type                                 | What is not compared automatically                                                                                    |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| **Functions**                        | Source text, closure state, and behaviour. Distinct functions are unequal.                                            |
+| **`Promise`**                        | Resolved or rejected values. Comparisons are synchronous and do not await promises.                                   |
+| **`WeakMap`, `WeakSet`**             | Stored entries or members.                                                                                            |
+| **`Error` objects**                  | Messages, stacks, causes, or other error contents.                                                                    |
+| **`URL`**                            | URL text or components.                                                                                               |
+| **Browser `document.all`**           | Collection contents. Its unusual `typeof` result does not make it equal to `null` or `undefined`, even in loose mode. |
+| **Other unsupported opaque objects** | Internal state. There is no universal handler for every JavaScript built-in, browser API, or host object.             |
+
+<!-- prettier-ignore -->
+```javascript
+const error = new Error('Request failed');
+const anotherError = new Error('Request failed');
+const request = Promise.resolve({ id: 1 });
+const callback = () => 'ready';
+
+isEqual(error, error);                             // => true
+isEqual(error, anotherError);                      // => false
+isEqual(request, request);                         // => true
+isEqual(Promise.resolve(1), Promise.resolve(1));   // => false
+isEqual(new WeakMap(), new WeakMap());             // => false
+isEqual(callback, callback);                       // => true
+isEqual(
+  () => 'ready',
+  () => 'ready'
+);                                                 // => false
+```
+
+A customiser can define equality for these values. Objects can also override the standard rules when both objects have `equals()` methods that return `true`. Distinct functions require a caller customiser to compare equal; their own `equals()` methods are ignored.
+
+Circular objects, arrays, Maps, and Sets are supported; see [circular references](#circular-references). Getters, proxies, invalid hooks, and invalid binary views can still throw. See [errors and supported inputs](#errors-and-supported-inputs).
+
+### Comparison rules
+
+These rules apply to nested values as well as the top-level inputs. A caller customiser runs first and can reject even identical references. If it returns `undefined`, or no customiser is used, identical references are accepted immediately. For other objects, `equals()` methods can override the structural and constructor checks as described under [custom equality](#custom-equality). The wrapper rules below also apply.
+
+| Behaviour                                                      | `isEqual`  | `isLooseEqual` | `isStrictEqual` |
+| -------------------------------------------------------------- | ---------- | -------------- | --------------- |
+| Primitive types                                                | Must match | May coerce     | Must match      |
+| Genuine `Number`/`String`/`Boolean`/`BigInt`/`Symbol` wrappers | Unboxed    | Unboxed        | Preserved       |
+| Ordinary object constructors                                   | Must match | Ignored        | Must match      |
+| `NaN` compared with `NaN`                                      | Equal      | Equal          | Equal           |
+| `+0` compared with `-0`                                        | Equal      | Equal          | Equal           |
+| Identical object/function/symbol reference                     | Equal      | Equal          | Equal           |
+| Own non-enumerable and symbol properties                       | Compared   | Compared       | Compared        |
+| `Map`/`Set` insertion order                                    | Ignored    | Ignored        | Ignored         |
+| Extra own properties on arrays and supported built-ins         | Compared   | Compared       | Compared        |
+
+#### Objects and property keys
+
+Property order and descriptor flags (`enumerable`, `writable`, `configurable`) do not affect equality. An own property must exist on both sides; an inherited property does not substitute for it. Getters are read as values, so accessors can execute user code. Inherited data is ignored, except constructor checking and the custom `equals` protocol. An **own** property named `constructor` remains compared data, including in loose mode. Default and strict modes also apply the precheck below.
+
+Structural comparison uses the keys exposed by `Reflect.ownKeys()` and reads their values. For a proxy, these can differ from the target's actual properties. Changing only the order of the exposed keys does not change equality.
+
+<!-- prettier-ignore -->
+```javascript
+const a = Object.defineProperty({}, 'hidden', { value: 1 });
+const b = Object.defineProperty({}, 'hidden', { value: 2 });
+const key = Symbol('id');
+const firstDictionary = Object.assign(Object.create(null), { x: 1 });
+const secondDictionary = Object.assign(Object.create(null), { x: 1 });
+
+isEqual(a, b);                               // => false
+isEqual({ [key]: 1 }, { [key]: 2 });         // => false
+isEqual(firstDictionary, secondDictionary);  // => true
+```
+
+For distinct objects that reach structural comparison, default and strict modes first read each object's `constructor` property and require those values to match with `===`. This includes inherited and own properties; it is not a check of the object's allocation-time class. A constructor getter can run and throw. Loose mode skips this precheck but still compares an own `constructor` property recursively like other own data.
+
+Two separate objects stored in `constructor` fields can therefore fail the default/strict precheck despite containing equal data:
+
+<!-- prettier-ignore -->
+```javascript
+const first = { constructor: { revision: 1 } };
+const second = { constructor: { revision: 1 } };
+const different = { constructor: { revision: 2 } };
+
+isEqual(first, second);          // => false
+isStrictEqual(first, second);    // => false
+isLooseEqual(first, second);     // => true
+isLooseEqual(first, different);  // => false
+
+const shared = { revision: 1 };
+isEqual(
+  { constructor: shared },
+  { constructor: shared }
+);                               // => true
+```
+
+Because the precheck uses `===`, two `NaN` constructor values fail it, unlike ordinary `NaN` data. Conversely, the same own constructor value can hide differences between actual classes. Caller customisers and applicable instance hooks can settle the object pair before this precheck.
+
+Object prototypes themselves are not compared. Distinct custom prototypes with the same resolved constructor value and the same own data can compare equal. Objects created in separate JavaScript environments, such as different iframes or Node VM contexts, usually have different constructors. Default and strict modes therefore usually consider them unequal; loose mode can compare their supported contents.
+
+#### Binary view windows
+
+DataViews compare only bytes inside their windows, even when the underlying buffers differ. See [supported types](#supported-types) for the other built-in comparison rules.
+
+<!-- prettier-ignore -->
+```javascript
+const first = new Uint8Array([9, 1, 2, 9]);
+const second = new Uint8Array([1, 2]);
+const window = new DataView(first.buffer, 1, 2);
+const whole = new DataView(second.buffer);
+
+isEqual(window, whole);                // => true
+isEqual(first.buffer, second.buffer);  // => false
+```
+
+### Custom equality
+
+You can pass a customiser for a particular comparison or define an `equals(other)` method on an object. The customiser runs first. Returning `undefined` allows the standard rules to run, including object `equals()` methods where applicable. Neither mechanism changes the library globally.
+
+#### When custom comparison is useful
+
+Use a customiser when you have a **partial rule** for certain values and want the library to compare the surrounding structure. If your own function already compares the complete inputs and always returns the boolean answer you need, call it directly; passing it through `isEqual.custom()` adds little value.
+
+For example, a product-search form may deliberately treat its search text and category labels case-insensitively, while still requiring its stock filter to match:
+
+<!-- prettier-ignore -->
+```javascript
+function ignoreCase(left, right) {
+  if (typeof left === 'string' && typeof right === 'string') {
+    return left.toLowerCase() === right.toLowerCase();
+  }
+
+  return undefined; // No special rule for objects, arrays, or booleans.
+}
+
+const saved = {
+  search: 'Laptop',
+  categories: ['Electronics', 'Computers'],
+  inStockOnly: true
+};
+const current = {
+  search: 'laptop',
+  categories: ['electronics', 'COMPUTERS'],
+  inStockOnly: true
+};
+const changed = { ...current, inStockOnly: false };
+
+// The partial rule cannot compare whole filter objects by itself.
+ignoreCase(saved, current) === undefined;    // => true
+
+isEqual(saved, current);                     // => false
+isEqual.custom(saved, current, ignoreCase);  // => true
+isEqual.custom(saved, changed, ignoreCase);  // => false
+
+// Capture the same rule and strict fallback for repeated comparisons.
+const sameFilters = isEqual.create(ignoreCase, { mode: 'strict' });
+sameFilters(saved, current);                 // => true
+sameFilters(saved, changed);                 // => false
+```
+
+The library walks through objects and arrays and matches `Map`/`Set` entries. Your customiser decides equality for the value pairs it receives. In this example, it leaves the filter objects, category arrays, and booleans to normal comparison and accepts strings that differ only in case.
+
+Here is how the rule applies to each kind of value in the example. **Callback order and call counts can vary.**
+
+| Values being compared          | Customiser result | Resulting work                                                            |
+| ------------------------------ | ----------------- | ------------------------------------------------------------------------- |
+| The two filter objects         | `undefined`       | Apply the selected mode's structural checks and compare their properties. |
+| `'Laptop'` and `'laptop'`      | `true`            | Accept this string pair.                                                  |
+| The two category arrays        | `undefined`       | Compare array structure and elements.                                     |
+| Corresponding category strings | `true`            | Accept those string pairs.                                                |
+| Stock-filter booleans          | `undefined`       | Apply normal boolean equality; `true` and `false` differ.                 |
+
+**Returning `true` for an object pair accepts that whole pair without visiting its children.** Returning `false` rejects that pair; it does not request fallback. Returning `undefined` allows normal comparison, which may reach nested values. The final result of `.custom()` is always a boolean when it completes normally; `.create()` instead returns a configured comparator function.
+
+This rule affects every string pair passed to it, regardless of the property name. Use it only when all such strings can safely be compared without case, including identifiers and other fields. For rules that differ by field, write a dedicated comparator or select and normalise the relevant fields first. The customiser does not receive a property path.
+
+#### Caller customisers
+
+| Result      | Effect on the two values                              |
+| ----------- | ----------------------------------------------------- |
+| `true`      | Accept as equal without inspecting its children.      |
+| `false`     | Reject as unequal; no default fallback for this pair. |
+| `undefined` | Use the selected standard mode.                       |
+
+The callback receives original values before identity checks or wrapper unboxing. During deep comparison, it also receives own-property values (including non-enumerable and symbol-keyed properties), typed-array elements, and candidate `Map`/`Set` keys and values. Collection matching cannot skip the callback just because native membership checks find a match. One-to-one matching and cycle handling still apply.
+
+The customiser is **not guaranteed to visit every nested value**. Returning `true` or `false` stops comparison of that pair. Returning `undefined` for identical object references accepts them without visiting their children.
+
+Property names are matched exactly and are not passed to the callback. Standard checks for types, own keys, array lengths, collection sizes, and typed-array kinds still apply when you return `undefined`. Built-in contents such as `Date` timestamps and `ArrayBuffer` bytes are handled internally, rather than passed as nested values. To change how those contents are compared, decide equality for the whole `Date` or buffer pair.
+
+Customisers must be synchronous, leave compared data unchanged, and give a consistent answer for the same pair during one comparison. A pair may be checked more than once or reused from the current comparison's matching state, so do not rely on callback counts or order. The callback receives no property path or internal comparison state and has no object bound as `this`.
+
+In TypeScript, `EqualityCustomizer` declares `this: undefined` to describe the unbound call, not an extra argument. A callback that declares a required receiver object must be bound first, such as `rule.bind(settings)`, or wrapped in an arrow callback that calls its owner. This does not detect every implicitly receiver-dependent method; keep the runtime invocation rule in mind.
+
+The library does not automatically call your callback with the arguments reversed. If your application needs symmetric equality, make sure your rule gives the same answer in both directions. Collection matching does not require transitivity, but your application may: if A equals B and B equals C, it may need A to equal C too.
+
+Only primitive booleans and `undefined` are valid results. Promises, thenables,
+boxed booleans, strings and other results throw `TypeError`; callbacks are never
+awaited. Errors thrown by a callback propagate unchanged. Invalid callback/options
+configuration is rejected before inspecting comparison inputs. Options must be an
+object, not `null`, an array, a primitive, or a function. An omitted `options` object is allowed. The supported modes are `'default'`, `'strict'` and `'loose'`; an omitted or `undefined` `mode` selects `'default'`. Only the own key `mode`
+is accepted (unknown string/symbol keys throw); inherited configuration is ignored.
+Option getters and proxy traps can execute and throw. Callback validation checks only that `typeof customizer` is `'function'`. Classes and revoked function proxies can pass that check and then throw when called.
+
+#### Instance equality hooks
+
+An `equals(other)` method must return a primitive **boolean**. It is called with its object as `this`. Defining a `call` property on the method does not replace the method or cause that property to be read.
+
+For distinct objects that have not been unboxed, either method returning `false` makes the objects unequal. If both methods return `true`, the objects are accepted without structural or constructor checks. If only one method exists and returns `true`, the normal structural rules must still pass, including comparison of any own `equals` property. Identical references are accepted before these methods run, and distinct functions ignore their own `equals()` methods. A caller customiser can override these rules before they run.
+
+The inherited native `Buffer.prototype.equals` method is not an application hook. Ordinary Node Buffers use the typed-array rules, including their own properties and customiser calls for numeric elements. An explicit instance or subclass override remains an application hook.
+
+This exception uses the native `Buffer` constructor supplied by the environment when the library loads. When passing host Buffers into a Node VM or sandbox, expose that same trusted constructor as its `Buffer` global **before loading the library** (for example, create the context with `{ Buffer }`). Without it, automatic native-Buffer handling is unsupported: the method follows the ordinary application-hook protocol and can return a different result or throw for unrelated values. The library does not guess native identity from class names, static methods, or prototype shapes. Supplying `Buffer` after the module has loaded does not change the captured reference. Ordinary typed arrays and application hooks do not require a `Buffer` global.
+
+<!-- prettier-ignore -->
+```javascript
+class Entity {
+  constructor(id, label) {
+    this.id = id;
+    this.label = label;
+  }
+
+  equals(other) {
+    return other instanceof Entity && this.id === other.id;
+  }
+}
+
+const original = new Entity(1, 'old label');
+const renamed = new Entity(1, 'new label');
+const another = new Entity(2, 'old label');
+
+isEqual(original, renamed);    // => true
+isEqual(original, another);    // => false
+```
+
+Hooks must leave compared data unchanged and give consistent results during a comparison. A hook can compare a different pair of values, but calling the same equality operation on the same pair indefinitely will recurse without stopping. Do not rely on hook call counts or order. Getters, hooks, and proxy traps may be skipped when an earlier check determines the result; errors from any that do run are passed to the caller.
+
+<!-- prettier-ignore -->
+```javascript
+const accepts = {
+  equals() {
+    return true;
+  }
+};
+const rejects = {
+  equals() {
+    return false;
+  }
+};
+const invalid = {
+  equals() {
+    return 'yes';
+  }
+};
+
+isEqual(accepts, rejects);     // => false
+isEqual(rejects, accepts);     // => false
+isEqual(rejects, rejects);     // => true
+isEqual(invalid, {});          // => throws TypeError
+```
+
+### Circular references
+
+Circular objects, arrays, Maps, and Sets are supported without recursive traversal. The library tracks **pairs of objects being compared**, not just whether each object has been seen before. If a tentative match later fails, comparisons that depended on it are reconsidered.
+
+<!-- prettier-ignore -->
+```javascript
+const a = { value: 1 };
+const b = { value: 1 };
+a.self = a;
+b.self = b;
+
+const first = new Set();
+const second = new Set();
+first.add(first);
+second.add(second);
+
+isEqual(a, b);                           // => true
+isEqual(first, second);                  // => true
+```
+
+Equality compares values without requiring the same pattern of shared references. A shared child can equal two separate children with the same contents. Cycles can also compare equal despite containing different numbers of objects, provided their values match as the cycles are followed.
+
+<!-- prettier-ignore -->
+```javascript
+const x = { v: 1 };
+const y = { v: 2 };
+
+isEqual([x, x], [{ v: 1 }, { v: 1 }]);   // => true
+isEqual([x, y, x], [x, y, y]);           // => false
+```
+
+### Native runtime capabilities
+
+The runtime baseline is ES2017. These native APIs are required; the library does not install polyfills.
+
+| Required capability                              | Runtime uses                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Object and function intrinsics                   | `Object.prototype.toString` and `hasOwnProperty`, `Object.getOwnPropertyDescriptor`, `getPrototypeOf`, `keys`, `freeze`, `defineProperties`, `create` (bundle caches), and native function calls. Type detection and own-property comparison rely on them.                                                                  |
+| Strings, arrays, iteration and maths             | `String.prototype.slice`, `Array.isArray`, `Array.from`, ordinary array methods and iterators, and `Math.floor`/`ceil`. Collection matching uses them for ordering and bookkeeping.                                                                                                                                         |
+| `Map` and `Set`                                  | Constructors, size getters, iterators and ordinary membership/update methods. They support both input comparisons and internal graph state.                                                                                                                                                                                 |
+| `Symbol` and `Reflect`                           | `Symbol.iterator`, `Symbol.toStringTag`, `Symbol.prototype.valueOf`, `Reflect.ownKeys` and `Reflect.apply`.                                                                                                                                                                                                                 |
+| Ordinary primitive wrappers, `Date` and `RegExp` | Native wrapper `valueOf` methods, `Date.prototype.getTime`, `RegExp` construction and its native `source` getter. Flag getters are handled separately below.                                                                                                                                                                |
+| Binary data                                      | `ArrayBuffer`, its `byteLength` getter and `isView`; `DataView` and its `buffer`, `byteOffset` and `byteLength` getters; `Uint8Array`, `Uint32Array`, `Int32Array`, typed-array `fill`, and the shared typed-array name/length getters and `values` method. These also support collection bookkeeping and byte comparisons. |
+
+Optional capabilities are captured when each entry point loads. Removing them beforehand does not prevent loading or unrelated comparisons. Missing constructors and missing members have separate behaviour:
+
+| Optional capability                                                                                                  | Native-present behaviour                                                                                          | Behaviour when unavailable before loading                                                                                                                                                                                                                                                                                                                                                           |
+| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BigInt` and its own native `prototype.valueOf`                                                                      | BigInt wrappers are unboxed in default/loose mode; strict mode also checks own properties.                        | BigInt primitives still use primitive comparison. Wrappers cannot be safely unboxed and use the unsupported-object rules: identity, caller customisers or instance hooks. The input is preserved; inherited or application `valueOf` methods are not substituted.                                                                                                                                   |
+| `SharedArrayBuffer` and its native `byteLength` getter                                                               | Compare byte contents and own properties.                                                                         | Shared buffers use the unsupported-object rules. Ordinary buffers, views and collections remain available.                                                                                                                                                                                                                                                                                          |
+| `BigInt64Array` and `BigUint64Array` constructor globals                                                             | Compare native elements and own properties through the shared typed-array handler.                                | The library never reads these constructor globals. Existing native instances can still be compared if the required shared typed-array intrinsics are available. Creating instances requires the appropriate native constructor.                                                                                                                                                                     |
+| RegExp flag getters: `hasIndices`, `global`, `ignoreCase`, `multiline`, `dotAll`, `unicode`, `unicodeSets`, `sticky` | Compare all native flags supported by the engine.                                                                 | A flag the engine cannot construct is omitted. If the engine accepts a flag but its getter is unavailable, comparisons requiring flag inspection throw an `Error` mentioning unavailable RegExp flag getters. Identity, customisers, instance hooks and mismatches already established by kind, constructor or source keep their usual precedence. Instance properties are not used as substitutes. |
+| Trusted `Buffer` global and `Buffer.prototype.equals`                                                                | Native Buffer equality methods are excluded from application-hook dispatch. Payloads use the typed-array handler. | Without `Buffer`, ordinary typed arrays and application hooks still work; host-Buffer handling has the [environment requirement](#instance-equality-hooks). Without its native `equals` method, Buffer payload comparison still works. `Buffer.isBuffer` is never called.                                                                                                                           |
+| `globalThis`                                                                                                         | Bundles use it to locate the global export target.                                                                | Browser-global and AMD loaders use their existing top-level global fallback.                                                                                                                                                                                                                                                                                                                        |
+
+There are no public conversion functions. Optional wrapper unboxing is the only conditional conversion affected here. It does not replace or mutate caller inputs, and customisers receive the original values before it runs. Configuration errors and exceptions from invoked user code still propagate.
+
+`WeakMap`, `WeakSet`, `Promise`, `Atomics`, newer Object helpers, and binary resize/grow/transfer methods are not runtime dependencies. Unsupported objects retain the rules below. Optional support does not authorise substituting arbitrary functions for trusted native methods or replacing native prototype chains.
+
+These rules apply to the root API, its named functions and all supplied bundles. Internal source modules are also tested independently, but are not supported package subpath exports. Capability-absence tests do not establish syntax, loader or historical-browser compatibility; see [runtime support](../README.md#runtime-support) and the [verification guide](https://github.com/koyote130708/go-equality/blob/master/docs/development.md#optional-capability-checks).
+
+### Errors and supported inputs
+
+An ordinary type or value mismatch returns `false`. Errors from getters, proxy traps, and custom callbacks or `equals()` methods are passed to the caller. An invalid callback or method result throws `TypeError`. Detached or out-of-bounds binary views may throw a native error. With no caller customiser, or after it returns `undefined`, identical references are accepted before instance hooks or binary-view checks.
+
+Promises, WeakMaps, WeakSets, Errors, URLs, and other unsupported objects compare equal only by reference, unless a caller customiser or both objects' `equals()` methods define equality. Private class fields cannot be inspected automatically: use an `equals()` method or a customiser with access to that state. A `Symbol.toStringTag` label alone cannot make an object a supported built-in; the library checks built-in types using their native methods. If no supported built-in type is found, an object with an unknown type tag is not compared structurally.
+
+Proxy targets are not unwrapped. A proxy around a native wrapper is not treated as the genuine wrapper when reading its hidden value. Some proxies can instead take the ordinary-object path and compare equal from their exposed properties even when their targets contain different hidden values. Other proxies can be opaque or throw through native checks or traps. Do not treat proxy equality as proof of equal target state: compare the original values or supply a caller customiser that knows the required state. Do not assume that every proxy uses identity-only comparison.
+
+Browser `document.all` follows the unsupported-object rules, despite its unusual `typeof` result. Identical references compare equal; a caller customiser or both objects' `equals()` methods can define equality with another object. Comparisons against `null` or `undefined` return `false`, even in loose mode, unless a caller customiser overrides the result. A customiser returning `undefined` uses these standard rules.
+
+Compared data graphs must be finite and remain unchanged during comparison. Cycles are supported; shared backing memory must also remain stable. Callbacks and hooks must follow the consistency rules above. Native built-ins must keep their standard prototype chains; subclasses are supported, but replacing a built-in's prototype with an unrelated object or `null` can prevent correct type detection. Ordinary dictionaries created with `Object.create(null)` are supported. Getters, hooks, and proxy traps execute normally; the library does not sandbox them.
+
+The library uses iteration to handle deep nesting, but comparisons still need time and memory. Large unordered collections with many possible matches can require repeated comparisons and reassignment. There is no fixed time or memory limit, and the library cannot stop a user hook that never returns.
+
+## TypeScript types
+
+These five type-only exports are available from the package root. They describe the existing JavaScript API; they are not runtime properties. Declaration checks use TypeScript {{TYPESCRIPT_VERSION}}. See [TypeScript in the README](../README.md#typescript) for import guidance and receiver requirements.
+
+| Type                 | Contract                                                                                                                                                                                                                                                   |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EqualityComparator` | `(value: unknown, other: unknown) => boolean`. A plain synchronous comparator with two required inputs; its boolean result does not narrow either input.                                                                                                   |
+| `EqualityCustomizer` | `(this: undefined, value: unknown, other: unknown) => boolean \| undefined`. A synchronous rule for reached pairs. `this` is a receiver annotation, not a third argument; bind callbacks that require an object receiver.                                  |
+| `EqualityMode`       | `'default' \| 'strict' \| 'loose'`. Selects the standard comparison rules used when a customiser delegates.                                                                                                                                                |
+| `EqualityOptions`    | An object with `readonly mode?: EqualityMode \| undefined`. Omitting the option or supplying `undefined` selects default mode. Runtime validation rejects unknown own keys and ignores inherited configuration; the type is not an exact-object validator. |
+| `EqualityFunction`   | The callable `(value: unknown, other: unknown) => boolean` interface of `isEqual`, with readonly `strict`, `loose`, `custom` and `create` methods. It describes that function, not the non-callable root namespace.                                        |
+
+Comparison is synchronous. Boolean results do not narrow the input types. The comparator returned by `isEqual.create()` has the plain `EqualityComparator` signature, without the attached methods of `EqualityFunction`. Full callback and configuration rules, including validation and exceptions, are in [caller customisers](#caller-customisers).

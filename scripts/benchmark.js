@@ -5,6 +5,8 @@ const path = require('node:path');
 const os = require('node:os');
 const { performance } = require('node:perf_hooks');
 const cases = require('../benchmarks/cases');
+const resolveLibrary = require('./resolve-library');
+const benchmarkOutput = require('./benchmark-output');
 const args = process.argv.slice(2);
 function option(name, fallback) {
   const i = args.indexOf(name);
@@ -22,13 +24,23 @@ if (!Number.isInteger(samples) || samples < 3 || !Number.isFinite(targetMs) || t
   throw new Error('Invalid benchmark settings');
 }
 const baseline = option('--baseline', null);
-const versions = baseline
-  ? [
-      { name: 'baseline', path: path.resolve(baseline), api: require(path.resolve(baseline)) },
-      { name: 'optimized', path: path.resolve(__dirname, '..'), api: require('..') }
-    ]
-  : [{ name: 'current', path: path.resolve(__dirname, '..'), api: require('..') }];
+const versions = (
+  baseline
+    ? [
+        { name: 'baseline', path: baseline },
+        { name: 'optimized', path: path.resolve(__dirname, '..') }
+      ]
+    : [{ name: 'current', path: path.resolve(__dirname, '..') }]
+).map((version) => {
+  const library = resolveLibrary(version.path);
+  return { name: version.name, ...library, api: require(library.entry) };
+});
+const output = benchmarkOutput(option('--output', null), versions);
 const filter = option('--filter', '');
+const selectedCases = cases.filter((spec) => spec.name.includes(filter));
+if (selectedCases.length === 0) {
+  throw new Error('No benchmark cases match --filter: ' + filter);
+}
 function batch(fn, a, b, iterations, expected) {
   let matches = 0;
   const start = performance.now();
@@ -46,7 +58,7 @@ function median(list) {
   return a[Math.floor(a.length / 2)];
 }
 const results = [];
-for (const spec of cases.filter((c) => c.name.includes(filter))) {
+for (const spec of selectedCases) {
   const [a, b, expected = true] = spec.make();
   const runners = versions.map((v) => ({ ...v, fn: v.api[spec.method], values: [], iterations: 1 }));
   for (const runner of runners) {
@@ -102,12 +114,11 @@ const report = {
   targetMs,
   explicitGcBetweenSamples: !!global.gc,
   note: 'Local warm-JIT single-process measurements, alternating version order. Fixtures and assertions outside timed loops. Samples include any in-loop GC. No cross-library claim or timing-based unit assertion.',
-  versions: versions.map((v) => ({ name: v.name, version: require(path.join(v.path, 'package.json')).version })),
+  versions: versions.map((v) => ({ name: v.name, version: v.version })),
   results
 };
 const json = JSON.stringify(report, null, 2) + '\n';
-const output = option('--output', null);
 if (output) {
-  fs.writeFileSync(path.resolve(output), json);
+  fs.writeFileSync(benchmarkOutput(output, versions), json);
 }
 console.log(json);

@@ -1,11 +1,14 @@
 'use strict';
-// Compare API overhead within the current implementation, not different libraries/semantics. Fixtures
-// and factories are created outside timing; a pure undefined rule delegates.
+// Compare the cost of standard, immediate custom and reusable custom calls.
+// Create inputs and comparators before timing; the callback always returns undefined.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const { performance } = require('node:perf_hooks');
+const benchmarkOutput = require('./benchmark-output');
 const { isEqual } = require('..');
+const library = { entry: require.resolve('..'), manifest: require.resolve('../package.json') };
+const reportFile = benchmarkOutput(process.argv[2], [library]);
 const callback = () => undefined;
 const created = isEqual.create(callback);
 const compareNow = (a, b) => isEqual.custom(a, b, callback);
@@ -65,6 +68,7 @@ for (const [name, make] of cases) {
   const [a, b] = make();
   const runs = variants.map(([label, compare]) => ({ label, compare, count: 1, samplesNs: [] }));
   for (const r of runs) {
+    assert.equal(r.compare(a, b), true, name + ' / ' + r.label);
     for (let i = 0; i < 6; i++) {
       const ms = batch(r.compare, a, b, r.count);
       r.count = Math.max(1, Math.min(1000000, Math.ceil((r.count * 10) / Math.max(ms, 0.01))));
@@ -104,7 +108,7 @@ const report = {
   results
 };
 const output = JSON.stringify(report, null, 2) + '\n';
-if (process.argv[2]) {
-  fs.writeFileSync(process.argv[2], output);
+if (reportFile) {
+  fs.writeFileSync(benchmarkOutput(reportFile, [library]), output);
 }
 process.stdout.write(output);

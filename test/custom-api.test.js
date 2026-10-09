@@ -55,13 +55,21 @@ test('attached modes are the standalone exports, unbound and immutable', () => {
   assert.equal(create(ignoreCase)('HELLO', 'hello'), true);
 });
 
+test('customisation is centralised on isEqual, not the strict or loose functions', () => {
+  for (const compare of [isStrictEqual, isLooseEqual, isEqual.strict, isEqual.loose]) {
+    assert.equal('custom' in compare, false);
+    assert.equal('create' in compare, false);
+  }
+});
+
 test('custom compares now; create returns a plain independent binary function', () => {
   assert.equal(typeof isEqual.custom({}, {}, fallback), 'boolean');
   const compare = isEqual.create(fallback);
   assert.equal(typeof compare, 'function');
   assert.equal(compare.length, 2);
-  assert.equal(compare.custom, undefined);
-  assert.equal(compare.strict, undefined);
+  for (const name of ['strict', 'loose', 'custom', 'create']) {
+    assert.equal(name in compare, false);
+  }
   assert.notEqual(compare, isEqual.create(fallback));
   assert.equal(compare.call(null, { a: 1 }, { a: 1 }), true);
 });

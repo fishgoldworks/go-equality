@@ -1,170 +1,145 @@
 'use strict';
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
 const vm = require('node:vm');
+const fs = require('node:fs');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
 const api = require('./helpers/api');
 
 const root = path.resolve(__dirname, '..');
-const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
-const examples = [...readme.matchAll(/^```(?:js|javascript)\n([\s\S]*?)^```/gm)];
-const htmlExamples = [...readme.matchAll(/^```html\n([\s\S]*?)^```/gm)];
+const { readDocuments, examples: extractExamples, checkLinks, bindImports } = require('./helpers/documentation');
+const documents = readDocuments(root);
+const readme = documents['README.md'];
+const reference = documents['docs/API.md'];
+const examples = extractExamples(documents);
 const names = ['isEqual', 'isLooseEqual', 'isStrictEqual'];
 const documented = [...names, 'isEqual.strict', 'isEqual.loose', 'isEqual.custom', 'isEqual.create'];
-
 const instrument = require('./helpers/instrumentExample');
 
-// Exercise each example against the API selected by source/artifact/package
-// test runs. A separate test below verifies the real root module imports.
-function bindImports(code) {
-  let bound = false;
-  let source = code.replace(/^import \* as (\w+) from 'go-equality';$/gm, (_, alias) => {
-    bound = true;
-    return `const ${alias} = __api;`;
-  });
-  source = source.replace(/^import \{([^}]+)\} from 'go-equality';$/gm, (_, imports) => {
-    bound = true;
-    return `const {${imports}} = __api;`;
-  });
-  source = source.replace(/require\('go-equality'\)/g, () => {
-    bound = true;
-    return '__api';
-  });
-  assert.doesNotMatch(source, /\b(?:import\s|require\s*\()/, 'Unsupported import in executable example');
-  return (bound ? '' : 'const { isEqual, isLooseEqual, isStrictEqual } = __api;\n') + source;
-}
-
-for (const [i, example] of examples.entries()) {
-  test(`README executable JavaScript block ${i + 1}`, () => {
-    const { source, assertions } = instrument(example[1]);
+// Check both documents against the source, bundles or installed API selected by the runner.
+for (const { file, index, code } of examples) {
+  test(file + ' executable JavaScript block ' + (index + 1), () => {
+    const { source, assertions } = instrument(code);
     assert.ok(assertions > 0, 'Each example must state at least one checked result');
     vm.runInNewContext(
       bindImports(source),
       { __api: api, Equality: api, assert },
-      {
-        filename: `README example ${i + 1}`,
-        timeout: 5000
-      }
+      { filename: file + ' example ' + (index + 1), timeout: 5000 }
     );
   });
 }
 
-for (const [i, example] of htmlExamples.entries()) {
-  test(`README browser script block ${i + 1}`, () => {
-    const scripts = [...example[1].matchAll(/<script(?: src="([^"]+)")?>([\s\S]*?)<\/script>/g)];
-    assert.equal(scripts.length, 2);
-    assert.match(scripts[0][1], /^dist\/go-equality(?:\.min)?\.js$/);
-    const context = vm.createContext({ assert });
-    vm.runInContext(fs.readFileSync(path.join(root, scripts[0][1]), 'utf8'), context, { timeout: 5000 });
-    const { source, assertions } = instrument(scripts[1][2]);
-    assert.ok(assertions > 0);
-    vm.runInContext(source, context, { filename: 'README browser example', timeout: 5000 });
-  });
-}
-
-test('README namespace, named and CommonJS imports work through the package root', () => {
-  const imports = examples.filter(([, code]) => /^import /m.test(code) || /require\('go-equality'\)/.test(code));
-  assert.ok(imports.length >= 4);
-  for (const [, code] of imports) {
-    const source = instrument(code).source;
-    const esm = /^import /m.test(code);
-    const prefix = esm
-      ? "import assert from 'node:assert/strict';\n"
-      : "const assert = require('node:assert/strict');\n";
-    const result = spawnSync(
-      process.execPath,
-      ['--input-type=' + (esm ? 'module' : 'commonjs'), '-e', prefix + source],
-      {
-        cwd: root,
-        encoding: 'utf8',
-        timeout: 10000
-      }
-    );
-    if (result.error) {
-      throw result.error;
-    }
-    assert.equal(result.status, 0, result.stderr || result.stdout);
-  }
-});
-
-test('README documents every public function using the requested template structure', () => {
+test('README links every public function to the full API documentation', () => {
   assert.match(readme, /^# Go Equality$/m);
   assert.match(readme, /^## Installation$/m);
   assert.match(readme, /^## Usage$/m);
-  assert.match(readme, /^### ES6$/m);
-  assert.match(readme, /^### Node$/m);
-  assert.match(readme, /^### Web browser$/m);
-  assert.match(readme, /^## Documentation$/m);
-  assert.match(readme, /^#### Table of Contents$/m);
-  assert.match(readme, /^### Equality$/m);
-  assert.match(readme, /All \*\*7 public call forms\*\*/);
-  assert.match(readme, /docs-7%20call%20forms-blue/);
-  assert.match(readme, /^## Additional documentation$/m);
-  assert.match(readme, /^## License$/m);
+  assert.match(readme, /^### ES modules$/m);
+  assert.match(readme, /^### CommonJS$/m);
+  assert.match(readme, /^### Browser$/m);
+  assert.match(readme, /^## API summary$/m);
+  assert.doesNotMatch(readme, /#api-reference|^## API reference$|^### API summary$/m);
+  assert.match(readme, /^## Contents$/m);
+  for (const heading of [
+    '## API summary',
+    '### Supported types',
+    '#### Value and structural comparison',
+    '#### Typed arrays',
+    '#### Identity-only comparison',
+    '#### When custom comparison is useful'
+  ]) {
+    assert.ok(reference.includes('\n' + heading + '\n'), 'Missing reference section: ' + heading);
+  }
+  assert.match(reference, /^## Equality$/m);
+  assert.doesNotMatch(readme, /^#### isEqual/m);
+  assert.match(readme, /^\|\s+API\s+\|\s+Description\s+\|\s+Returns\s+\|$/m);
+  const summary = readme.split('## API summary\n')[1].split('## Behaviour\n')[0];
   for (const name of documented) {
-    const section = readme.match(new RegExp('^#### ' + name + '\\n([\\s\\S]*?)(?=^#{1,4} |$(?![\\s\\S]))', 'm'));
-    assert.ok(section, `${name} must have a function reference`);
-    assert.match(section[1], /^##### Parameters$/m);
+    assert.ok(summary.includes('[`' + name + '('), name + ' must have a linked summary row');
+    const row = summary.split('\n').find((line) => line.includes('[`' + name + '('));
+    assert.match(row, /\]\(docs\/API\.md#/);
+  }
+  assert.match(readme, /docs-100%25-brightgreen/);
+  assert.match(readme, /^## Further reading$/m);
+  assert.match(readme, /^## Licence$/m);
+  for (const name of documented) {
+    const escapedName = name.replaceAll('.', '\\.');
+    const section = reference.match(
+      new RegExp('^### `' + escapedName + '\\([^\\n]*\\)`\\n([\\s\\S]*?)(?=^#{1,3} |$(?![\\s\\S]))', 'm')
+    );
+    assert.ok(section, name + ' must have a signature heading and function reference');
+    assert.match(section[1], /^\*\*Parameters\*\*$/m);
     if (name !== 'isEqual.create') {
-      assert.match(section[1], /^[-*+]\s+`value` \*\*any\*\*/m);
-      assert.match(section[1], /^[-*+]\s+`other` \*\*any\*\*/m);
+      assert.match(section[1], /^\|\s+`value`\s+\|\s+`unknown`\s+\|/m);
+      assert.match(section[1], /^\|\s+`other`\s+\|\s+`unknown`\s+\|/m);
     }
     if (name === 'isEqual.custom' || name === 'isEqual.create') {
-      assert.match(section[1], /^[-*+]\s+`customizer` \*\*Function\*\*/m);
-      assert.match(section[1], /^[-*+]\s+`options` \*\*Object\*\*/m);
+      assert.match(section[1], /^\|\s+`customizer`\s+\|\s+`EqualityCustomizer`\s+\|/m);
+      assert.match(section[1], /^\|\s+`options\?`\s+\|\s+`EqualityOptions`\s+\|\s+`undefined`\s+\|/m);
     }
-    assert.match(section[1], /^##### Examples$/m);
-    assert.match(section[1], name === 'isEqual.create' ? /Returns \*\*Function\*\*/ : /Returns \*\*boolean\*\*/);
+    assert.match(section[1], /^\*\*Examples\*\*$/m);
+    assert.match(
+      section[1],
+      name === 'isEqual.create' ? /\*\*Returns:\*\* `EqualityComparator`/ : /\*\*Returns:\*\* `boolean`/
+    );
     assert.match(section[1], /\*\*Notes\*\*/);
-    assert.match(section[1], /\/\/ true/);
-    assert.match(section[1], /\/\/ false/);
+    assert.match(section[1], /\/\/ => true/);
+    assert.match(section[1], /\/\/ => false/);
   }
 });
 
-test('README assertion count and release metadata are consistent', () => {
-  assert.ok(examples.length >= 10);
-  const assertions = examples.reduce((sum, [, code]) => sum + instrument(code).assertions, 0);
-  assert.ok(assertions >= 50, 'Do not silently stop executing documented examples');
+test('Documentation assertion count and release metadata are consistent', () => {
+  assert.ok(examples.length >= 32);
+  const assertions = examples.reduce((sum, { code }) => sum + instrument(code).assertions, 0);
+  assert.ok(assertions >= 130, 'Do not silently stop executing documented examples');
   const pkg = require('../package.json');
   const lock = require('../package-lock.json');
   assert.match(
     readme,
-    new RegExp('^[-*+]\\s+\\*\\*version\\*\\*:\\s+' + pkg.version.replaceAll('.', '\\.') + '$', 'm')
+    new RegExp(
+      '^[-*+]\\s+\\*\\*Version:\\*\\* \\[' + pkg.version.replaceAll('.', '\\.') + '\\]\\(CHANGELOG\\.md\\)$',
+      'm'
+    )
   );
-  assert.match(readme, /^[-*+]\s+\*\*license\*\*:\s+LGPL-3\.0-only$/m);
+  assert.match(readme, /^[-*+]\s+\*\*Licence:\*\* \[MIT\]\(LICENSE\.md\)$/m);
   assert.equal(pkg.version, lock.version);
   assert.equal(pkg.version, lock.packages[''].version);
-  assert.equal(pkg.license, 'LGPL-3.0-only');
+  assert.equal(pkg.license, 'MIT');
   assert.equal(pkg.license, lock.packages[''].license);
   assert.deepEqual(pkg.engines, lock.packages[''].engines);
   assert.deepEqual(Object.keys(api).sort(), names);
 });
 
-test('README internal anchors and repository-relative links resolve', () => {
-  const withoutCode = readme.replace(/^```[^\n]*\n[\s\S]*?^```/gm, '');
-  const anchors = new Set();
-  const used = new Map();
-  for (const [, heading] of withoutCode.matchAll(/^#{1,6} (.+)$/gm)) {
-    const base = heading
-      .toLowerCase()
-      .replace(/[`*]/g, '')
-      .replace(/[^\p{L}\p{N}\s_-]/gu, '')
-      .replace(/ /g, '-');
-    const count = used.get(base) || 0;
-    used.set(base, count + 1);
-    anchors.add(base + (count ? '-' + count : ''));
-  }
-  for (const [, target] of withoutCode.matchAll(/\]\(([^)\s]+)\)/g)) {
-    if (/^(?:https?:|mailto:)/.test(target)) {
-      continue;
+test('README and API links resolve across documents, including target anchors', () => {
+  checkLinks(root, documents);
+});
+
+test('the full reference inventories each exported TypeScript type', () => {
+  const declarations = fs.readFileSync(path.join(root, 'index.d.ts'), 'utf8');
+  const exported = [...declarations.matchAll(/^export (?:type|interface) (\w+)/gm)].map((match) => match[1]);
+  const section = reference.split('## TypeScript types\n')[1]?.split('\n## ')[0];
+  assert.ok(section, 'Document the type-only exports in the full API reference.');
+  const entries = [...section.matchAll(/^\|\s+`(\w+)`\s+\|/gm)].map((match) => match[1]);
+  assert.deepEqual(entries.sort(), exported.sort(), 'Every exported type must have exactly one table entry.');
+  assert.match(readme, /\]\(docs\/API\.md#typescript-types\)/);
+});
+
+test('editor tooltip reference links target current API anchors', () => {
+  const links = [];
+  const publicFiles = [
+    'index.d.ts',
+    'src/isEqual.js',
+    'src/isLooseEqual.js',
+    'src/isStrictEqual.js',
+    'src/customEquality.js'
+  ];
+  const referenceLink = /@see https:\/\/github\.com\/koyote130708\/go-equality\/blob\/master\/docs\/API\.md#([^\s*]+)/g;
+  for (const file of publicFiles) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8');
+    const matches = [...text.matchAll(referenceLink)];
+    assert.ok(matches.length > 0, file + ': public tooltips must link to the full reference.');
+    for (const [, fragment] of matches) {
+      links.push('[' + file + '](docs/API.md#' + fragment + ')');
     }
-    if (target.startsWith('#')) {
-      assert.ok(anchors.has(target.slice(1)), `Unknown anchor: ${target}`);
-    } else {
-      const [file] = target.split('#');
-      assert.ok(fs.existsSync(path.join(root, file)), `Missing linked file: ${file}`);
-    }
   }
+  checkLinks(root, { 'README.md': links.join('\n') });
 });

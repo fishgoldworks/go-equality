@@ -3,15 +3,23 @@
 const compare = require('./compare');
 
 /**
- * Deep equality with primitive coercion and constructor-independent structure.
- * NaN equals NaN; +0 equals -0. Identical references always compare equal.
- * Supports cycles, unordered Maps/Sets, own non-enumerable/symbol properties
- * and bilateral boolean equals() methods. See README for the full contract.
- * @param {*} value The first value.
- * @param {*} other The second value.
- * @returns {boolean} Whether the values compare equal under this mode.
- * @throws {TypeError} When a custom equals() method returns a non-boolean.
- * Exceptions from invoked user code and invalid detached views propagate.
+ * Determines whether two values are deeply equal, allowing primitive conversions
+ * such as `1` matching `'1'`.
+ *
+ * Compares nested contents of arrays and supported objects. The conversions also
+ * apply inside nested data.
+ * Primitive wrappers use their contained values; ordinary object constructors
+ * may differ. Arbitrary objects are not converted into primitive values.
+ *
+ * Applicable `equals()` methods can override the standard rules. Errors from
+ * getters, proxy traps, invoked methods and invalid binary views propagate.
+ *
+ * @param {*} value The first value to compare.
+ * @param {*} other The second value to compare.
+ * @returns {boolean} `true` if the values are deeply equal under loose
+ * comparison rules; otherwise `false`.
+ * @throws {TypeError} If an invoked `equals()` method returns a non-boolean.
+ * @see https://github.com/koyote130708/go-equality/blob/master/docs/API.md#islooseequalvalue-other
  */
 function isLooseEqual(value, other) {
   return compare(value, other, 'loose');

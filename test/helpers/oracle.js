@@ -1,7 +1,7 @@
 'use strict';
-// Deliberately independent, slow reference for small, stable object/array/Map/Set
-// graphs. It eagerly enumerates EVERY object pair and EVERY possible matching.
-// It shares no production code, lazy-edge strategy, queue or augmenting paths.
+// Independent reference for small, stable object/array/Map/Set graphs.
+// Enumerate all object pairs and possible assignments so failures in the
+// production matcher are not reproduced by using the same algorithm.
 const isObject = (value) => value !== null && typeof value === 'object';
 function perfectMatching(matrix) {
   const used = new Set();
