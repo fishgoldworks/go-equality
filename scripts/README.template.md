@@ -1,6 +1,6 @@
 # Go Equality
 
-**Deep equality utilities for JavaScript, with default, strict and loose modes plus custom comparison rules.**
+**Equality comparison utilities for JavaScript.**
 
 [![Source line coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#development)
 [![Documentation](https://img.shields.io/badge/docs-100%25-brightgreen.svg)](docs/API.md)
@@ -9,7 +9,11 @@
 - **Version:** [{{VERSION}}](CHANGELOG.md)
 - **Licence:** [{{LICENSE}}](LICENSE.md)
 
-Compare arrays and supported objects by their nested contents, even when they are separate instances. Choose how primitive types and wrappers are treated, or supply a custom comparison rule. Circular references, Dates, regular expressions, Maps, Sets, typed arrays and binary buffers are supported; see [supported types](#supported-types) for their comparison rules.
+Go Equality checks whether two JavaScript values are equal. It compares primitives and the nested contents of arrays and supported objects, so separate instances can compare equal without sharing the same reference.
+
+Choose default, strict or loose comparison to control how type differences are handled. Add custom rules for particular values while the library compares the surrounding structure. Apply these rules to individual comparisons or create a reusable comparison function.
+
+The library handles circular references and supports Dates, regular expressions, Maps, Sets, typed arrays and binary buffers. See [supported types](#supported-types) for their comparison rules and limitations.
 
 No runtime dependencies. TypeScript declarations included.
 
