@@ -31,7 +31,7 @@ try {
   for (const file of files) {
     assert.match(
       file,
-      /^(?:src\/[A-Za-z]+\.js|dist\/go-equality(?:\.min)?\.js|index\.(?:js|d\.ts)|package\.json|README\.md|docs\/API\.md|LICENSE\.md|CHANGELOG\.md)$/
+      /^(?:src\/[A-Za-z]+\.js|dist\/go-equality(?:\.js|\.min\.js(?:\.map)?)|index\.(?:js|d\.ts)|package\.json|README\.md|docs\/API\.md|LICENSE\.md|CHANGELOG\.md)$/
     );
   }
   for (const file of [
@@ -42,7 +42,8 @@ try {
     'LICENSE.md',
     'CHANGELOG.md',
     'dist/go-equality.js',
-    'dist/go-equality.min.js'
+    'dist/go-equality.min.js',
+    'dist/go-equality.min.js.map'
   ]) {
     assert.ok(files.includes(file), 'Missing required packaged file: ' + file);
   }

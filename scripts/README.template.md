@@ -1,19 +1,18 @@
 # Go Equality
 
-**Equality comparison utilities for JavaScript.**
+**Check whether two JavaScript values are equal.**
 
 [![Source line coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#development)
 [![Documentation](https://img.shields.io/badge/docs-100%25-brightgreen.svg)](docs/API.md)
-[![Donate](https://img.shields.io/badge/donate-blue.svg)](https://www.paypal.com/donate/?business=T7Q29NNMZVW98&no_recurring=0&item_name=Support+Go+Equality&currency_code=USD)
 
 - **Version:** [{{VERSION}}](CHANGELOG.md)
 - **Licence:** [{{LICENSE}}](LICENSE.md)
 
-Go Equality checks whether two JavaScript values are equal. It compares primitives and the nested contents of arrays and supported objects, so separate instances can compare equal without sharing the same reference.
+Use `isEqual(value, other)` to compare primitives and the nested contents of arrays and supported objects. Separate instances can compare equal even when they do not share a reference. Choose `isEqual.strict()` or `isEqual.loose()` to control how type differences are handled.
 
-Choose default, strict or loose comparison to control how type differences are handled. Add custom rules for particular values while the library compares the surrounding structure. Apply these rules to individual comparisons or create a reusable comparison function.
+For values that need their own comparison rules, use `isEqual.custom()` for an individual comparison or `isEqual.create()` to create a reusable comparison function. Your callback handles those values while the library compares the surrounding structure.
 
-The library handles circular references and supports Dates, regular expressions, Maps, Sets, typed arrays and binary buffers. See [supported types](#supported-types) for their comparison rules and limitations.
+Circular references, `Date`, `RegExp`, `Map`, `Set`, typed arrays and binary buffers are supported. See [supported types](#supported-types) for their comparison rules and limitations.
 
 No runtime dependencies. TypeScript declarations included.
 
@@ -45,9 +44,11 @@ yarn add go-equality
 | ES modules  | Native default and named imports work on Node.js 14.13.0 or later, or Node.js 12.20.0+ within 12.x, through CommonJS interoperability. |
 | Browser     | ES2017 syntax plus `Map`, `Set`, `Symbol`, `Reflect.ownKeys` and `Reflect.apply`.                                                      |
 
-BigInt, BigInt typed arrays, `SharedArrayBuffer` and newer regular-expression flags are optional native features. Missing optional constructors or methods do not stop the package loading or comparing unrelated values. The [native capability table](docs/API.md#native-runtime-capabilities) lists required APIs and explains identity-only fallbacks and errors when optional inspection is unavailable. Examples using `1n` require a runtime that can parse bigint literals. The library installs no global polyfills. There is no standalone browser ES module build.
+- **Optional features:** BigInt, BigInt typed arrays, `SharedArrayBuffer` and newer regular-expression flags depend on the runtime. Their absence does not stop the package loading or comparing unrelated values. See [native capabilities](docs/API.md#native-runtime-capabilities) for the comparison rules when a feature is unavailable.
+- **Polyfills:** The library does not install global polyfills.
+- **Browser modules:** There is no standalone browser ES module build; use the [browser bundles](#browser).
 
-For Node VM or sandbox comparisons involving host Buffers, supply the host's trusted `Buffer` constructor as the context's `Buffer` global before loading the library. Native Buffer detection does not use shape guessing. See [instance equality hooks](docs/API.md#instance-equality-hooks) for this environment requirement.
+For host Buffers passed into a Node VM or sandbox, follow the [Buffer setup requirements](docs/API.md#instance-equality-hooks) before loading the library.
 
 ## Usage
 
@@ -55,112 +56,123 @@ For Node VM or sandbox comparisons involving host Buffers, supply the host's tru
 
 <!-- prettier-ignore -->
 ```javascript
-import Eq from 'go-equality';
+import { isEqual } from 'go-equality';
 
-Eq.isEqual({ id: 1 }, { id: 1 });  // => true
-Eq.isLooseEqual(1, '1');           // => true
-Eq.isStrictEqual(1, Object(1));    // => false
-Eq.isEqual.strict(1, Object(1));   // => false
-Eq.isEqual.loose(1, '1');          // => true
-```
+isEqual({ user: { id: 1 } }, { user: { id: 1 } });   // => true
+isEqual({ user: { id: 1 } }, { user: { id: 2 } });   // => false
 
-Or import individual functions:
-
-<!-- prettier-ignore -->
-```javascript
-import { isEqual, isLooseEqual, isStrictEqual } from 'go-equality';
-
-isEqual({ id: 1 }, { id: 1 });     // => true
-isLooseEqual(1, '1');              // => true
-isStrictEqual(1, Object(1));       // => false
+isEqual(1, '1');                                     // => false
+isEqual.strict(1, '1');                              // => false
+isEqual.loose(1, '1');                               // => true
 ```
 
 ### CommonJS
 
 <!-- prettier-ignore -->
 ```javascript
-const Eq = require('go-equality');
+const { isEqual } = require('go-equality');
 
-Eq.isEqual([1, 2, 3], [1, 2, 3]);  // => true
-Eq.isLooseEqual(null, undefined);  // => true
-Eq.isStrictEqual(1, '1');          // => false
-```
-
-Or import individual functions:
-
-<!-- prettier-ignore -->
-```javascript
-const { isEqual, isLooseEqual, isStrictEqual } = require('go-equality');
-
-isEqual([1, 2, 3], [1, 2, 3]);     // => true
-isLooseEqual(null, undefined);     // => true
-isStrictEqual(1, '1');             // => false
+isEqual({ id: 1 }, { id: 1 });                       // => true
+isEqual({ id: 1 }, { id: 2 });                       // => false
 ```
 
 ### Browser
 
-Serve either included browser bundle from your application. Set the script URL to its served location, then alias the global `Equality` object as `Eq`:
+Load Go Equality from jsDelivr or host a bundle yourself:
+
+- [Minified bundle](https://cdn.jsdelivr.net/npm/{{NAME}}@{{VERSION}}/dist/go-equality.min.js)
+- [Readable bundle](https://cdn.jsdelivr.net/npm/{{NAME}}@{{VERSION}}/dist/go-equality.js)
+
+The bundle exposes the `Equality` namespace:
 
 <!-- prettier-ignore -->
 ```html
-<script src="dist/go-equality.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/{{NAME}}@{{VERSION}}/dist/go-equality.min.js"></script>
 <script>
-  const Eq = Equality;
+  const { isEqual } = Equality;
 
-  Eq.isEqual([1, 2, 3], [1, 2, 3]);  // => true
-  Eq.isLooseEqual(1, '1');           // => true
-  Eq.isStrictEqual(1, Object(1));    // => false
+  isEqual({ id: 1 }, { id: 1 });   // => true
+  isEqual({ id: 1 }, { id: 2 });   // => false
 </script>
 ```
 
-The installed package includes `dist/go-equality.js` and `dist/go-equality.min.js`. Both standalone UMD bundles contain the same implementation and also support AMD loaders. The library makes no external requests.
+Both bundles are included under `dist/` in the npm package and support CommonJS and AMD loaders. The minified bundle includes a source map to the readable bundle.
 
-**Import notes:** Use the package's default export or named root exports. Individual-function subpaths such as `go-equality/isEqual` and `go-equality/src/isEqual.js` are not public entry points. See [TypeScript](#typescript) for declarations and typing behaviour.
+**Import notes:** The examples use `isEqual` and its attached methods. Individual-function subpaths such as `go-equality/isEqual` and `go-equality/src/isEqual.js` are not public entry points. See [TypeScript](#typescript) for declarations and typing behaviour.
 
 ## API summary
 
 See the **[full API documentation](docs/API.md)** for parameters,
 return values, errors and examples.
 
-{{API_SUMMARY}}
+The **fallback mode** supplies the standard comparison rules used when your customiser returns `undefined`. Set it with `options.mode`.
 
-The attached methods are read-only, non-enumerable properties of `isEqual`. The root export object is not callable. For custom strict or loose comparison, pass `{ mode: 'strict' }` or `{ mode: 'loose' }` to `isEqual.custom()` or `isEqual.create()`.
+{{API_SUMMARY}}
 
 ## Behaviour
 
 ### Comparison modes
 
-All three modes compare nested contents of arrays and supported objects, so separate objects can be equal. Choose a mode according to which differences should matter:
+Every mode compares the contents of arrays and supported objects, including nested values. Choose how primitive types and wrapper objects should be handled:
 
-- **Default:** compare primitive wrappers by their contained values, so `Object(1)` matches `1`.
+- **Default:** compare primitive wrappers by the values they contain. For example, `new Number(1)` is considered equal to the primitive number `1`.
+- **Strict:** preserve primitive types. `new Number(1)` differs from the primitive number `1`, while two `Number` objects containing `1` can compare equal.
 - **Loose:** also allow primitive conversions, such as `1` matching `'1'`, including inside nested data.
-- **Strict:** preserve primitive types and keep a wrapper distinct from its primitive value. Two wrapper objects can still compare equal.
 
-A **primitive wrapper** is an object holding a primitive value, such as `Object(1)`. **Unboxed** below means that only the contained primitive value is compared. **Coercion** means converting primitive values for comparison.
+A **primitive wrapper** is an object containing a primitive value. For example, `new Number(1)` creates a `Number` object containing the primitive number `1`. **Unboxed** below means that only the contained primitive value is compared. **Coercion** means converting primitive values for comparison.
 
-| Rule                         | Default: `isEqual` | Loose: `isLooseEqual` | Strict: `isStrictEqual` |
-| ---------------------------- | ------------------ | --------------------- | ----------------------- |
-| Primitive types              | Must match         | May coerce            | Must match              |
-| Primitive wrappers           | Unboxed            | Unboxed               | Preserved               |
-| Ordinary object constructors | Must match         | Ignored               | Must match              |
+| Rule                         | Default: `isEqual` | Strict: `isEqual.strict` | Loose: `isEqual.loose` |
+| ---------------------------- | ------------------ | ------------------------ | ---------------------- |
+| Primitive types              | Must match         | Must match               | May coerce             |
+| Primitive wrappers           | Unboxed            | Preserved                | Unboxed                |
+| Ordinary object constructors | Must match         | Must match               | Ignored                |
 
-In every mode, `NaN` equals `NaN`, and positive and negative zero are equal. Loose mode does not convert arbitrary objects to primitives. Customisers and supported instance hooks can override the standard rules; see the [full comparison rules](docs/API.md#comparison-rules).
+<!-- prettier-ignore -->
+```javascript
+isEqual(new Number(1), 1);                     // => true
+isEqual.strict(new Number(1), 1);              // => false
+isEqual.strict(new Number(1), new Number(1));  // => true
+isEqual.loose(1, '1');                         // => true
+```
 
-For objects reaching structural comparison, default and strict modes check the resolved `constructor` property values with `===`, not allocation-time class identity. Loose mode skips that precheck but still compares an own constructor field as data. See [objects and property keys](docs/API.md#objects-and-property-keys).
+In every mode, `NaN` equals `NaN`, and positive and negative zero are equal. Loose mode does not convert arbitrary objects to primitives.
+
+Default and strict modes also check `constructor` values. See the [full comparison rules](docs/API.md#comparison-rules) for constructor checks and the custom rules that can override standard comparison.
 
 ### Supported types
 
-- Ordinary objects, arrays, null-prototype dictionaries and custom class instances compare their own properties, including non-enumerable and symbol-keyed properties. Array order matters, and a hole differs from explicit `undefined`.
-- Dates, regular expressions, Maps, Sets, typed arrays, Buffers, ArrayBuffers, SharedArrayBuffers and DataViews compare their relevant contents. `Map` and `Set` order does not matter; matching is one-to-one. Regular expressions include `lastIndex`.
-- Promises, WeakMaps, WeakSets, functions and other unsupported values normally require the same reference. Private class fields are not inspected automatically.
+Supported objects also compare their own properties, subject to the exceptions below.
 
-Circular references are supported; equality does not require the same pattern of shared references. See the [supported-type tables](docs/API.md#supported-types) for wrapper exceptions, binary views and the complete rules.
+- **Primitive values:** Compare values using the selected default, strict or loose mode. Symbols match by identity.
+- **Ordinary objects:** Compare their own properties and nested values.
+- **`Array`:** Compare elements in order. An empty slot differs from an element containing `undefined`.
+- **`Date`:** Compare timestamps. Two invalid dates compare equal.
+- **`RegExp`:** Compare the pattern, flags and `lastIndex`.
+- **`Map`:** Compare key/value pairs regardless of insertion order.
+- **`Set`:** Compare members regardless of insertion order.
+- **Custom class instances:** Compare their own properties. Private fields are not inspected automatically.
+- **Typed arrays:** Compare element types, lengths and values.
+- **Node.js `Buffer`:** Compare byte values.
+- **`ArrayBuffer`:** Compare byte contents.
+- **`SharedArrayBuffer`:** Compare byte contents. Shared backing memory must remain unchanged during comparison.
+- **`DataView`:** Compare the bytes inside the view, rather than the entire backing buffer.
+- **Primitive wrappers:** Compare the contained primitive values; strict mode also compares their own properties.
+- **`arguments` objects:** Compare indexed values, length and custom own properties.
+- **Objects without a prototype:** Compare the own properties of objects created with `Object.create(null)`.
+
+Own properties belong directly to an object rather than being inherited. Non-enumerable and symbol-keyed properties are included. Arrays and supported built-ins also compare extra own properties, with exceptions for primitive wrappers and `arguments` objects.
+
+Each `Map` entry or `Set` member must match a separate entry or member in the other collection.
+
+**Compared by reference only:** `Promise`, `WeakMap`, `WeakSet`, functions and other unsupported values normally require the same reference. A custom equality rule can change this behaviour.
+
+Circular references are supported. A shared child object can match separate child objects with the same contents. See the [supported-type tables](docs/API.md#supported-types) for the complete rules and [runtime support](#runtime-support) for optional native features.
 
 ### Custom equality
 
-Pass a comparison callback, called a **customiser**, when particular values need a special equality rule. Use `isEqual.custom()` to compare now, or `isEqual.create()` to save the callback and fallback mode in a reusable function. A callback returning `undefined` leaves the pair to the selected standard mode.
+Use `isEqual.custom()` to compare values with your own rule, or `isEqual.create()` to save the rule for repeated comparisons. The callback, called a **customiser**, can handle particular values and leave others to standard comparison.
 
-For example, compare strings in a search filter without case, while keeping the stock flag significant:
+Ignore letter case when comparing strings; compare booleans normally:
 
 <!-- prettier-ignore -->
 ```javascript
@@ -179,55 +191,87 @@ const current = { search: 'laptop', inStockOnly: true };
 const changed = { search: 'laptop', inStockOnly: false };
 const sameFilters = isEqual.create(ignoreCase);
 
-isEqual(saved, current);       // => false
-sameFilters(saved, current);   // => true
-sameFilters(saved, changed);   // => false
+isEqual(saved, current);                     // => false
+isEqual.custom(saved, current, ignoreCase);  // => true
+sameFilters(saved, current);                 // => true
+sameFilters(saved, changed);                 // => false
 ```
 
-| Customiser result | Effect on the current pair                              |
-| ----------------- | ------------------------------------------------------- |
-| `true`            | Accept as equal; an object pair's children are skipped. |
-| `false`           | Reject as unequal; this does not request fallback.      |
-| `undefined`       | Use the selected standard mode.                         |
+| Customiser result | Effect on the current pair                                        |
+| ----------------- | ----------------------------------------------------------------- |
+| `true`            | Treat the pair as equal without comparing its nested values.      |
+| `false`           | Treat the pair as unequal; do not use standard comparison for it. |
+| `undefined`       | Continue with the selected standard comparison mode.              |
 
-The customiser runs before standard checks and instance `equals()` hooks. It is synchronous, must keep inputs unchanged and must return a primitive boolean or `undefined`. It is not guaranteed to visit every nested value and receives no property path: this example applies to every string pair it receives. Use a dedicated comparator when rules differ by field.
+- The customiser runs before standard comparison and object `equals()` methods.
+- Return `true`, `false` or `undefined` synchronously, and leave the inputs unchanged.
+- Give a consistent answer for the same pair during one comparison.
+- The customiser may run multiple times during one comparison. Each result applies to the current pair of values.
+- It is not guaranteed to receive every nested value and receives no property name or path. Do not rely on the number or order of calls.
 
-See [custom equality](docs/API.md#custom-equality) for the walkthrough, validation, callback precedence and instance hooks.
+The example's rule applies to every string pair it receives. Use a separate comparison function when rules differ by field.
+
+Pass `{ mode: 'strict' }` or `{ mode: 'loose' }` as the options argument to `isEqual.custom()` or `isEqual.create()` to choose the standard rules used when the callback returns `undefined`. The default is `'default'`.
+
+See [custom equality](docs/API.md#custom-equality) for callback validation and how custom rules interact with object `equals()` methods.
 
 ### Errors and supported inputs
 
-Value mismatches return `false`. Errors from getters, proxies and callbacks propagate; invalid callback or hook results throw `TypeError`. Compared graphs must be finite and remain unchanged during comparison, including shared backing memory. Proxy targets and their hidden values are not automatically unwrapped; equality of exposed properties does not prove equal target state. See [errors and supported inputs](docs/API.md#errors-and-supported-inputs) for the full contract.
+- Value mismatches return `false`.
+- Invalid customisers, options, callback results or `equals()` results throw `TypeError`.
+- Errors thrown while reading inputs or running user code are passed to the caller.
+- Compared data must have a finite structure and remain unchanged during comparison, including shared backing memory. Circular references are supported.
+
+Proxy targets are not unwrapped. See [errors and supported inputs](docs/API.md#errors-and-supported-inputs) for proxy behaviour, binary-view errors and the complete input requirements.
 
 ## TypeScript
 
-Declarations are included; no separate `@types` package is required. Declaration checks use TypeScript {{TYPESCRIPT_VERSION}}. The three root functions accept two `unknown` values and return `boolean`. `isEqual.create()` returns a reusable function with that signature. The five [exported TypeScript types](docs/API.md#typescript-types) describe comparators, customisers, modes, options and the callable `isEqual` interface. Equality functions do not narrow values as TypeScript type guards. See the import notes under [Usage](#usage) for supported entry points.
+TypeScript declarations are included; no separate `@types` package is required.
 
-Customisers are called without a receiver. Bind a callback that declares a required `this` object, or wrap the call in an arrow function; see [caller customisers](docs/API.md#caller-customisers).
+Comparison functions accept two `unknown` values and return `boolean`. They do not narrow the inputs as TypeScript type guards. `isEqual.create()` returns a reusable function with the same input and return types.
+
+Consumer declarations support TypeScript 3.0 or later. Additional module-resolution requirements are:
+
+- **Node16/NodeNext:** TypeScript 4.7 or later.
+- **Bundler:** TypeScript 5.0 or later.
+
+See [TypeScript types](docs/API.md#typescript-types) for the comparator, customiser, mode and options declarations, and [Usage](#usage) for imports.
+
+Customisers are called without an object bound as `this`. Bind callbacks that need `this`, or wrap the method call in an arrow function; see [caller customisers](docs/API.md#caller-customisers).
 
 ## Performance
 
-Standard comparisons can skip work using primitive equality, identical references and native collection membership. Custom comparisons run your callback before those shortcuts, which can cost more, especially for large Sets and Maps. A factory saves repeated configuration checks; it still performs deep comparison and calls your callback.
+Custom comparisons run your callback before built-in equality checks. They can take longer than standard comparisons, especially for large `Map` and `Set` values.
 
-The engine does not mutate inputs or cache equality results between calls. Ambiguous unordered collections can require repeated comparisons and substantial memory, including storage that grows with the square of the collection size. Iterative traversal avoids recursion limits but does not impose a fixed time or memory budget.
+`isEqual.create()` checks the callback and options once. Each call still compares the values and runs your callback.
 
-See the [benchmark and memory guide](https://github.com/koyote130708/go-equality/blob/master/docs/development.md#benchmarks-and-memory) for measurement commands, methodology and limits. Local benchmark timings are observations, not universal speed guarantees.
+Large `Map` or `Set` values with many possible matches can require substantial time and memory. Memory use can grow with the square of the collection size. Deep nesting is supported, but comparisons have no fixed time or memory budget.
+
+The library does not change inputs or cache comparison results between calls. See the [benchmark and memory guide](https://github.com/fishgoldworks/go-equality/blob/master/docs/development.md#benchmarks-and-memory) for measurements and limits.
 
 ## Migration
 
-Version 2 fixes comparisons involving cycles, unordered collections, custom instances and hooks, own non-enumerable and symbol properties, and browser builds. It also defines the rules for sparse arrays, `RegExp` `lastIndex`, wrappers, hook return values, unsupported types, constructors, and objects from different JavaScript environments. Loose mode no longer converts arbitrary objects to primitives. Only the documented root API, its attached methods, and listed distribution entry points are public; internal helpers have changed. CommonJS usage supports Node.js 8.0.0 or later; see [runtime support](#runtime-support) for ES module and optional-native requirements. The standalone `isLooseEqual` and `isStrictEqual` exports remain supported alongside the attached aliases and custom methods. Review the [comparison rules](docs/API.md#comparison-rules) and [changelog](CHANGELOG.md) before upgrading.
+When upgrading from 1.0.4:
+
+- **Imports:** Import `isEqual`, `isLooseEqual` and `isStrictEqual` from `go-equality`. Replace imports from internal `src/` paths; those paths are no longer public. Existing root calls remain supported.
+- **Instance hooks:** Make custom instance `equals()` methods return `true` or `false`. Either method can reject the comparison, and both must accept it to bypass the normal structural checks. For a partial rule that delegates to the library, use `isEqual.custom()` and return `undefined` when your rule does not apply.
+- **Comparison changes:** Review comparisons that depend on loose object coercion, wrapper objects, sparse arrays, symbols, non-enumerable properties, constructors or `RegExp` `lastIndex`. Version 2 applies the documented rules consistently; loose mode does not call arbitrary object conversion methods. Convert application values explicitly when that is your intended rule.
+- **VM Buffers:** When comparing host Buffers inside a Node VM or sandbox, expose the host's trusted `Buffer` constructor before loading the library.
+- **Runtime requirements:** Use Node.js 8.0.0 or later for CommonJS. Check [runtime support](#runtime-support) for ES module and browser requirements.
+
+See the [comparison rules](docs/API.md#comparison-rules) and [changelog](CHANGELOG.md) for the complete changes, including cycle and collection matching fixes and the MIT licence for version 2.
 
 ## Development
 
-Contributing requires Node.js 22.18+ within Node 22, or Node.js 24+; the lint toolchain does not support Node 23. This requirement is separate from [consumer runtime support](#runtime-support).
+Use npm for development. Contributor tools require Node.js 22.18+ within Node 22, or Node.js 24+; the lint toolchain does not support Node 23. This requirement is separate from [consumer runtime support](#runtime-support). Contributor checks use TypeScript {{TYPESCRIPT_VERSION}}.
 
 ```sh
 npm ci
-npm run docs
 npm run build
 npm test
 ```
 
-Edit `scripts/README.template.md` for this overview and `scripts/API.template.md` for the full API documentation. `npm run docs` generates `README.md` and `docs/API.md`, reuses the API summary and validates the public API inventory and navigation. The build assembles the complete consumer package under `package/`, including browser bundles in `package/dist/`.
+Edit `scripts/README.template.md` and `scripts/API.template.md`. `npm run build` regenerates `README.md` and `docs/API.md`, then assembles the consumer package under `package/`, including the browser bundles in `package/dist/`. Use `npm run docs` for documentation-only updates.
 
 Run the standard gate with an exact Node.js 8.0.0 consumer executable, while keeping the command itself on a supported contributor Node version:
 
@@ -235,20 +279,20 @@ Run the standard gate with an exact Node.js 8.0.0 consumer executable, while kee
 npm run verify -- --node /path/to/node-8.0.0
 ```
 
-`verify` checks lint, formatting, generated documentation, source coverage, declarations, bundles and an installed package. `verify:all` adds Chromium, Firefox and WebKit checks of the same archive. See the [development guide](https://github.com/koyote130708/go-equality/blob/master/docs/development.md) for browser setup, exact-runtime selection, build recovery, release verification and local package installation. [Code quality](https://github.com/koyote130708/go-equality/blob/master/docs/code-quality.md) explains the shared tooling and formatting rules.
+`npm run verify` checks lint, formatting, generated documentation, source coverage, declarations, build recovery, package contents and installed consumers. `npm run verify:all` adds Chromium, Firefox and WebKit checks against the same archive, including the browser bundles and README example.
 
-The coverage badge reports executable source-line coverage. The docs badge reports checked public API reference coverage. Neither percentage measures how understandable the writing is or guarantees correctness for every input; see the [test coverage map](https://github.com/koyote130708/go-equality/blob/master/docs/test-coverage.md).
+See the [development guide](https://github.com/fishgoldworks/go-equality/blob/master/docs/development.md) for browser setup, exact-runtime selection, build recovery, release verification and local package installation. [Code quality](https://github.com/fishgoldworks/go-equality/blob/master/docs/code-quality.md) explains the shared tooling and formatting rules.
+
+The coverage badge measures executable source-line coverage. The documentation badge measures public API reference coverage. Neither badge guarantees correctness for every input. See the [test coverage map](https://github.com/fishgoldworks/go-equality/blob/master/docs/test-coverage.md) for the contracts and checks behind these figures.
 
 ## Further reading
 
 - [Full API documentation](docs/API.md): signatures, parameters, examples and behavioural contracts.
 - [Changelog](CHANGELOG.md): release changes and migration from version 1.
-- [Development guide](https://github.com/koyote130708/go-equality/blob/master/docs/development.md): contributor setup, verification, release and benchmark procedures.
-- [Engine design](https://github.com/koyote130708/go-equality/blob/master/docs/design.md): comparison internals and optimisation constraints.
-- [Test coverage map](https://github.com/koyote130708/go-equality/blob/master/docs/test-coverage.md): contracts, regression suites and known limits.
-
-The npm package contains runtime source, TypeScript declarations, both browser bundles, package metadata, `README.md`, `docs/API.md`, the licence and the changelog. Contributor guides, tests, benchmarks, scripts and CI configuration stay in the [source repository](https://github.com/koyote130708/go-equality).
+- [Development guide](https://github.com/fishgoldworks/go-equality/blob/master/docs/development.md): contributor setup, verification, release and benchmark procedures.
+- [Engine design](https://github.com/fishgoldworks/go-equality/blob/master/docs/design.md): comparison internals and optimisation constraints.
+- [Test coverage map](https://github.com/fishgoldworks/go-equality/blob/master/docs/test-coverage.md): contracts, regression suites and known limits.
 
 ## Licence
 
-[{{LICENSE}}](LICENSE.md) Copyright (c) Michael Ko.
+Licensed under the [{{LICENSE}} licence](LICENSE.md).

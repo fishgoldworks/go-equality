@@ -26,23 +26,23 @@ test('generation updates both documents and preserves release history', () => {
   const updated = {
     ...metadata,
     version: '9.8.7',
-    engines: { node: '>=24.0.0' },
     devDependencies: { ...metadata.devDependencies, typescript: '9.0.0' }
   };
-  const result = render(templates(), updated, api);
+  const result = render(templates(), updated, api, { node: '>=24.0.0' });
   const readme = result['README.md'];
   assert.match(readme, /[-*+]\s+\*\*Version:\*\* \[9\.8\.7\]\(CHANGELOG\.md\)/);
-  assert.match(result['docs/API.md'], /Version \[9\.8\.7\]\(\.\.\/CHANGELOG\.md\)/);
+  assert.match(result['docs/API.md'], /\[go-equality 9\.8\.7\]\(\.\.\/CHANGELOG\.md\)/);
   assert.match(readme, /CommonJS\s+\|\s+Node\.js 24\.0\.0 or later/);
-  assert.match(readme, /Declaration checks use TypeScript 9\.0\.0/);
+  assert.match(readme, /Contributor checks use TypeScript 9\.0\.0/);
   assert.match(readme, /docs-100%25-brightgreen/);
-  assert.match(readme, /Version 2 fixes comparisons involving cycles/);
+  const migration = templates().README.split('## Migration\n')[1].split('\n## ')[0];
+  assert.ok(readme.includes(migration), 'Current metadata must not rewrite the documented upgrade history.');
 });
 
 test('one API summary source produces links appropriate to each document', () => {
   const sources = templates();
   sources.API = sources.API.replace(
-    'Determines whether two values are deeply equal. Primitive wrappers are compared as their wrapped values.',
+    'Checks whether two values are deeply equal. Primitive wrappers are compared by their contained values. For example, `new Number(1)` is considered equal to the primitive number `1`.',
     'Updated summary description.'
   );
   const result = render(sources, metadata, api);
@@ -113,4 +113,30 @@ test('generation requires signatures in API headings', () => {
   const sources = templates();
   sources.API = sources.API.replace('### `isEqual(value, other)`', '### `isEqual`');
   assert.throws(() => render(sources, metadata, api), /headings must include a signature/);
+});
+
+test('strict and loose aliases share complete entries without duplicate summary rows', () => {
+  const documents = render(templates(), metadata, api);
+  for (const text of Object.values(documents)) {
+    const summary = text.split('## API summary\n')[1].split('\n## ')[0];
+    assert.equal([...summary.matchAll(/^\| \[`/gm)].length, 5);
+    assert.doesNotMatch(text, /^### `(?:isLooseEqual|isStrictEqual)\(/m);
+  }
+  assert.match(documents['docs/API.md'], /import \{ isEqual, isLooseEqual \} from 'go-equality';/);
+  assert.match(documents['docs/API.md'], /import \{ isEqual, isStrictEqual \} from 'go-equality';/);
+});
+
+test('generation rejects undocumented, duplicate and incorrect alias mappings', () => {
+  for (const name of ['isLooseEqual', 'isStrictEqual']) {
+    const note = '**Direct import:** You can also import this function as `' + name + '` from `go-equality`.';
+    for (const replacement of ['', note + '\n' + note]) {
+      const sources = templates();
+      sources.API = sources.API.replace(note, replacement);
+      assert.throws(() => render(sources, metadata, api), /public call forms/);
+    }
+    assert.throws(() => render(templates(), metadata, { ...api, [name]: () => true }), /same function/);
+    const sources = templates();
+    sources.API = sources.API.replace('[`' + name + '`]', '[`missingAlias`]');
+    assert.throws(() => render(sources, metadata, api), /summary must cover all public call forms/);
+  }
 });

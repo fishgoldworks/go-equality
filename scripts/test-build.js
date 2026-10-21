@@ -67,13 +67,16 @@ if (mode === 'backup-cleanup') {
     };
 }
 if (mode === 'minify' || mode === 'smoke') {
-    const minify = text => {
+    const realMinify = terser.minify_sync;
+    const minify = (input, options) => {
         if (mode === 'minify') throw Error('Injected minifier failure');
-        // Pass format checks so this failure occurs when the bundle is executed.
-        const banner = text.slice(0, text.indexOf('*/') + 2);
-        return {code:banner + '\\nthrow Error("Injected smoke failure");', map:'{}'};
+        // Preserve format and source-map checks; fail only when the bundle executes.
+        const result = realMinify(input, options);
+        const bannerEnd = result.code.indexOf('*/') + 2;
+        result.code = result.code.slice(0, bannerEnd) + '\\nthrow Error("Injected smoke failure");' + result.code.slice(bannerEnd).trimStart();
+        return result;
     };
-    terser.minify = async text => minify(text);
+    terser.minify = async (input, options) => minify(input, options);
     terser.minify_sync = minify;
 }
 if (mode === 'replace' || mode === 'replace-falsy' || mode.startsWith('rollback')) {
@@ -348,4 +351,24 @@ Module._load = function (request, parent, isMain) {
     for (const mode of ['minify', 'smoke', 'replace', 'replace-falsy']) {
       assert.match(output, new RegExp('not ok \\d+ - ' + mode + ' failure preserves the previous distribution'));
     }
+  }));
+
+test('build regenerates stale consumer documentation from maintained templates', () =>
+  fixture((directory, build) => {
+    fs.appendFileSync(path.join(directory, 'scripts/README.template.md'), '\nCurrent overview sentinel.\n');
+    fs.writeFileSync(path.join(directory, 'README.md'), 'Stale overview.\n');
+    const result = build('');
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    const readme = fs.readFileSync(path.join(directory, 'package/README.md'), 'utf8');
+    assert.match(readme, /Current overview sentinel/);
+    assert.equal(readme, fs.readFileSync(path.join(directory, 'README.md'), 'utf8'));
+  }));
+
+test('invalid documentation prevents replacing the previous distribution', () =>
+  fixture((directory, build) => {
+    fs.appendFileSync(path.join(directory, 'scripts/README.template.md'), '\n{{UNKNOWN_FIELD}}\n');
+    const result = build('');
+    assertPreserved(directory, result);
+    assert.match(result.stderr, /Unknown template field/);
   }));

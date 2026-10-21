@@ -8,10 +8,9 @@ node_modules/
 /package/
 
 # Build staging and temporary files
-.tmp/
 /.go-equality-build-*/
-# Local playgrounds retained for manual experimentation.
-/src/temp/
+.tmp/
+temp/
 
 # Coverage and local test results
 /coverage/

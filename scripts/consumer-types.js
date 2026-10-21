@@ -32,4 +32,5 @@ module.exports = function checkConsumerTypes(consumer, runtimes, esmRuntimes) {
   for (const runtime of esmRuntimes) {
     run(runtime, [path.join('compiled', 'default-import.mjs')], consumer);
   }
+  require('./test-types-compat')({ directory: path.join(consumer, 'node_modules/go-equality') });
 };

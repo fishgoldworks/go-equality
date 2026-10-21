@@ -13,7 +13,8 @@ const readme = documents['README.md'];
 const reference = documents['docs/API.md'];
 const examples = extractExamples(documents);
 const names = ['isEqual', 'isLooseEqual', 'isStrictEqual'];
-const documented = [...names, 'isEqual.strict', 'isEqual.loose', 'isEqual.custom', 'isEqual.create'];
+const documented = ['isEqual', 'isEqual.strict', 'isEqual.loose', 'isEqual.custom', 'isEqual.create'];
+const aliases = { isLooseEqual: 'isEqual.loose', isStrictEqual: 'isEqual.strict' };
 const instrument = require('./helpers/instrumentExample');
 
 // Check both documents against the source, bundles or installed API selected by the runner.
@@ -57,6 +58,14 @@ test('README links every public function to the full API documentation', () => {
     assert.ok(summary.includes('[`' + name + '('), name + ' must have a linked summary row');
     const row = summary.split('\n').find((line) => line.includes('[`' + name + '('));
     assert.match(row, /\]\(docs\/API\.md#/);
+  }
+  for (const [alias, canonical] of Object.entries(aliases)) {
+    const anchor = canonical.replace('.', '').toLowerCase() + 'value-other';
+    assert.ok(summary.includes('[`' + alias + '`](docs/API.md#' + anchor + ')'));
+    assert.ok(
+      reference.includes('**Direct import:** You can also import this function as `' + alias + '` from `go-equality`.')
+    );
+    assert.doesNotMatch(reference, new RegExp('^### `' + alias + '\\(', 'm'));
   }
   assert.match(readme, /docs-100%25-brightgreen/);
   assert.match(readme, /^## Further reading$/m);
@@ -132,7 +141,8 @@ test('editor tooltip reference links target current API anchors', () => {
     'src/isStrictEqual.js',
     'src/customEquality.js'
   ];
-  const referenceLink = /@see https:\/\/github\.com\/koyote130708\/go-equality\/blob\/master\/docs\/API\.md#([^\s*]+)/g;
+  const referenceLink =
+    /@see https:\/\/github\.com\/fishgoldworks\/go-equality\/blob\/master\/docs\/API\.md#([^\s*]+)/g;
   for (const file of publicFiles) {
     const text = fs.readFileSync(path.join(root, file), 'utf8');
     const matches = [...text.matchAll(referenceLink)];

@@ -30,13 +30,16 @@ function configuration(customizer, options) {
 }
 
 /**
- * Determines whether two values are deeply equal, using your callback to override
+ * Checks whether two values are deeply equal, using your callback to customise
  * individual comparisons.
  *
  * Return `true` or `false` from the callback to decide a pair, or `undefined` to use
  * the selected mode. The callback receives original values before identity
  * checks, wrapper unboxing and `equals()` methods; it can reject identical values.
- * It must be synchronous and leave inputs unchanged, and may skip nested pairs.
+ * It may run multiple times; each result applies to the current pair. It is not
+ * guaranteed to receive every nested pair. The callback must be synchronous,
+ * leave inputs unchanged and give a consistent answer for the same pair during
+ * one comparison.
  * Errors from getters, proxies, invoked user code and invalid binary views propagate.
  *
  * @param {*} value The first value to compare.
@@ -46,7 +49,7 @@ function configuration(customizer, options) {
  * @returns {boolean} `true` if the values are equal under the custom rules
  * and fallback mode; otherwise `false`.
  * @throws {TypeError} If configuration or an invoked callback or hook result is invalid.
- * @see https://github.com/koyote130708/go-equality/blob/master/docs/API.md#isequalcustomvalue-other-customizer-options
+ * @see https://github.com/fishgoldworks/go-equality/blob/master/docs/API.md#isequalcustomvalue-other-customizer-options
  */
 function custom(value, other, customizer, options) {
   const mode = configuration(customizer, options);
@@ -60,13 +63,15 @@ function custom(value, other, customizer, options) {
  * Validates the configuration once and saves the fallback mode. The returned
  * function compares values with the same rules as `custom()`; creation does not
  * call the callback. Each comparison has fresh state and does not cache results.
+ * The callback must leave inputs unchanged and give a consistent answer for the
+ * same pair during one comparison.
  *
  * @param {Function} customizer A synchronous callback returning `boolean` or `undefined`.
  * @param {Object} [options] Options selecting a fallback mode; an omitted `mode` selects `'default'`.
  * @returns {Function} A function that compares two values and returns a `boolean`.
  * @throws {TypeError} If configuration is invalid. Comparison errors, including
  * invalid callback results, occur when the returned function is called.
- * @see https://github.com/koyote130708/go-equality/blob/master/docs/API.md#isequalcreatecustomizer-options
+ * @see https://github.com/fishgoldworks/go-equality/blob/master/docs/API.md#isequalcreatecustomizer-options
  */
 function create(customizer, options) {
   const mode = configuration(customizer, options);

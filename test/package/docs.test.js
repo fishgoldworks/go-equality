@@ -25,7 +25,11 @@ for (const { file, index, code } of examples) {
 test('Installed documentation links resolve', () => checkLinks(root, documents));
 for (const [i, example] of htmlExamples.entries()) {
   test(`README browser script block ${i + 1}`, () => {
-    const scripts = [...example.code.matchAll(/<script(?: src="([^"]+)")?>([\s\S]*?)<\/script>/g)];
+    const metadata = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    const cdnPrefix = 'https://cdn.jsdelivr.net/npm/' + metadata.name + '@' + metadata.version + '/';
+    const scripts = [
+      ...example.code.replaceAll(cdnPrefix, '').matchAll(/<script(?: src="([^"]+)")?>([\s\S]*?)<\/script>/g)
+    ];
     assert.equal(scripts.length, 2);
     assert.match(scripts[0][1], /^dist\/go-equality(?:\.min)?\.js$/);
     const context = vm.createContext({ assert });
@@ -36,9 +40,10 @@ for (const [i, example] of htmlExamples.entries()) {
   });
 }
 
-test('README default, named and CommonJS imports work through the package root', () => {
+test('Documented ES module and CommonJS examples work through the package root', () => {
   const imports = examples.filter(({ code }) => /^import /m.test(code) || /require\('go-equality'\)/.test(code));
-  assert.ok(imports.length >= 4);
+  assert.ok(imports.some(({ code }) => /^import \{ isEqual \} from 'go-equality';$/m.test(code)));
+  assert.ok(imports.some(({ code }) => /^const \{ isEqual \} = require\('go-equality'\);$/m.test(code)));
   for (const { code } of imports) {
     const source = instrument(code).source;
     const esm = /^import /m.test(code);

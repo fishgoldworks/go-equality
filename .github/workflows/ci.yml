@@ -87,6 +87,34 @@ jobs:
         run: sha256sum --check *.sha256
       - name: Check the exact candidate on the selected and modern runtimes
         run: npm run test:package -- --tarball "${{ runner.temp }}/candidate/go-equality-$(node -p 'require("./package.json").version').tgz" --node "$CONSUMER_NODE"
+  typescript:
+    needs: candidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        typescript: ['3.0.3', '5.8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-candidate
+          path: ${{ runner.temp }}/candidate
+      - name: Check transferred candidate digest
+        working-directory: ${{ runner.temp }}/candidate
+        run: sha256sum --check *.sha256
+      - name: Install the exact candidate and selected compiler outside the checkout
+        run: |
+          npm install --prefix "$RUNNER_TEMP/consumer" --ignore-scripts --no-audit --no-fund --package-lock=false "$RUNNER_TEMP"/candidate/*.tgz
+          npm install --prefix "$RUNNER_TEMP/compiler" --ignore-scripts --no-save --package-lock=false typescript@${{ matrix.typescript }}
+      - name: Check the installed package with shared contracts
+        run: node scripts/test-types-compat.js --compiler "${{ runner.temp }}/compiler/node_modules/typescript/lib/tsc.js" --package "${{ runner.temp }}/consumer/node_modules/go-equality"
   browser:
     needs: candidate
     runs-on: ubuntu-latest
@@ -100,6 +128,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: npm ci
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

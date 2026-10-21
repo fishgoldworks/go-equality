@@ -2,7 +2,7 @@
   "name": "go-equality",
   "version": "2.0.0",
   "private": true,
-  "description": "Deep equality with strict and loose modes, circular-reference support, and custom comparison rules.",
+  "description": "Check whether two JavaScript values are equal.",
   "license": "MIT",
   "author": "Michael Ko",
   "email": "koyote130708@gmail.com",
@@ -20,13 +20,10 @@
     "equality check",
     "check equality"
   ],
-  "homepage": "https://github.com/koyote130708/go-equality",
+  "homepage": "https://github.com/fishgoldworks/go-equality",
   "repository": {
     "type": "git",
-    "url": "https://github.com/koyote130708/go-equality.git"
-  },
-  "engines": {
-    "node": ">=8.0.0"
+    "url": "https://github.com/fishgoldworks/go-equality.git"
   },
   "main": "index.js",
   "scripts": {
@@ -49,7 +46,7 @@
     "test:browser": "python scripts/test-browser.py",
     "test:memory": "node scripts/test-memory.js",
     "test:stress": "node scripts/stress.js",
-    "coverage": "npm test -- --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100",
+    "coverage": "npm test -- --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-exclude=\"**/temp/**\" --test-coverage-exclude=\"**/.tmp/**\" --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100",
     "verify": "node scripts/verify.js",
     "verify:all": "node scripts/verify.js --browser",
     "benchmark": "node scripts/benchmark.js",

@@ -3,7 +3,7 @@
 const compare = require('./compare');
 
 /**
- * Determines whether two values are deeply equal, allowing primitive conversions
+ * Checks whether two values are deeply equal, allowing primitive conversions
  * such as `1` matching `'1'`.
  *
  * Compares nested contents of arrays and supported objects. The conversions also
@@ -19,7 +19,7 @@ const compare = require('./compare');
  * @returns {boolean} `true` if the values are deeply equal under loose
  * comparison rules; otherwise `false`.
  * @throws {TypeError} If an invoked `equals()` method returns a non-boolean.
- * @see https://github.com/koyote130708/go-equality/blob/master/docs/API.md#islooseequalvalue-other
+ * @see https://github.com/fishgoldworks/go-equality/blob/master/docs/API.md#isequalloosevalue-other
  */
 function isLooseEqual(value, other) {
   return compare(value, other, 'loose');

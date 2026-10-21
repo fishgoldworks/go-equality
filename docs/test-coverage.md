@@ -65,7 +65,7 @@ Node VM loader checks cannot test real-browser behaviour such as `document.all`.
 
 [Example instrumentation](../test/instrumentExample.test.js) protects sequence-expression grouping, nested assertion insertion and rejection of unsupported explicit result annotations. [Documentation helper tests](../test/documentation-helpers.test.js) check standalone fence extraction, ignored fenced links/headings and false-result controls. [Infrastructure tests](../test/test-infrastructure.test.js) distinguish CommonJS/global/AMD selection, reject invalid selectors, prove main-runner failure/argument propagation and check the independent oracle against manually specified controls.
 
-These test the verification machinery; they are not new equality capabilities or additional generated graph scenarios. No current documentation example is claimed incorrect merely because a checker defect was found. The supported executable-example format is described in the [development guide](development.md#executable-examples-and-test-selection).
+These test the verification machinery; they are not new equality capabilities or additional generated graph scenarios. The supported executable-example format is described in the [development guide](development.md#executable-examples-and-test-selection).
 
 ## Interpreting results
 

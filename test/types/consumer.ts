@@ -145,7 +145,9 @@ isEqual.custom('ADMIN', 'admin', (left, right) => {
 
 const inferredComparator = isEqual.create(function (left, right) {
   // The contextual receiver is unavailable, not the EqualityFunction or an any value.
-  void (this satisfies undefined);
+  // eslint-disable-next-line @typescript-eslint/no-this-alias -- Check contextual this on older compilers.
+  const receiver: undefined = this;
+  void receiver;
   // @ts-expect-error no receiver object is supplied to an unbound callback
   void this.ignoreCase;
   // @ts-expect-error factory callbacks also receive unknown values

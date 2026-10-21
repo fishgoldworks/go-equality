@@ -87,22 +87,31 @@ ${modules.join(',\n')}
 
 function minify(output) {
   const text = fs.readFileSync(path.join(output, 'go-equality.js'), 'utf8');
-  const { code } = minifyJavaScript(text, {
-    ecma: 2017,
-    compress: {
-      // Preserve document.all's typeof/undefined distinction and loose equality.
-      comparisons: false,
-      typeofs: false,
-      // Getters and proxy traps are observable parts of the comparison contract.
-      pure_getters: false
-    },
-    mangle: { properties: false },
-    keep_fnames: true,
-    keep_classnames: true,
-    format: { comments: false, preamble: banner, beautify: false }
-  });
+  const { code, map } = minifyJavaScript(
+    { 'go-equality.js': text },
+    {
+      ecma: 2017,
+      compress: {
+        // Preserve document.all's typeof/undefined distinction and loose equality.
+        comparisons: false,
+        typeofs: false,
+        // Getters and proxy traps are observable parts of the comparison contract.
+        pure_getters: false
+      },
+      mangle: { properties: false },
+      keep_fnames: true,
+      keep_classnames: true,
+      format: { comments: false, preamble: banner, beautify: false },
+      sourceMap: {
+        filename: 'go-equality.min.js',
+        url: 'go-equality.min.js.map',
+        includeSources: true
+      }
+    }
+  );
   parse(code);
   fs.writeFileSync(path.join(output, 'go-equality.min.js'), code + '\n');
+  fs.writeFileSync(path.join(output, 'go-equality.min.js.map'), map + '\n');
 }
 
 function replaceDistribution(temporary) {
@@ -152,6 +161,7 @@ function main() {
   if (process.argv.length > 2) {
     throw Error('Usage: node scripts/build.js');
   }
+  require('node:child_process').execFileSync(process.execPath, [path.join(__dirname, 'docs.js')], { stdio: 'inherit' });
   const temporary = fs.mkdtempSync(path.join(root, '.go-equality-build-'));
   let buildError;
   let buildFailed = false;

@@ -48,8 +48,8 @@ export default [
       'artifacts/**',
       '.go-equality-build-*/**',
       'coverage/**',
-      '.tmp/**',
-      'src/temp/**',
+      '**/.tmp/**',
+      '**/temp/**',
       'nbproject/**'
     ]
   },

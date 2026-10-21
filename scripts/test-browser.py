@@ -19,6 +19,7 @@ from pathlib import Path
 import platform
 import shutil
 import sys
+import subprocess
 import tarfile
 
 
@@ -47,13 +48,15 @@ def main() -> int:
     candidate = {}
     filenames = ("go-equality.js", "go-equality.min.js")
     suite_path = root / "test" / "browser" / "suite.js"
+    example_helper = root / "scripts/browser-examples.js"
     try:
-        inputs = [Path(__file__), suite_path]
+        inputs = [Path(__file__), suite_path, example_helper, root / "test/helpers/documentation.js", root / "test/helpers/instrumentExample.js"]
         if args.tarball:
             inputs.extend([args.tarball, Path(str(args.tarball.resolve()) + ".sha256")])
         else:
             directory = args.bundle_dir or root / "package" / "dist"
             inputs.extend(directory / filename for filename in filenames)
+            inputs.extend([directory.parent / "README.md", directory.parent / "package.json"])
         # Validate before reading inputs or starting browser work. Otherwise the
         # report's finally block can overwrite the very candidate it evaluated.
         check_output_path(args.output, inputs)
@@ -71,6 +74,8 @@ def main() -> int:
             bundles = {}
             # Read only advertised regular files; never extract archive paths to disk.
             with tarfile.open(fileobj=io.BytesIO(archive_bytes), mode="r:gz") as archive:
+                readme = archive.extractfile("package/README.md").read().decode("utf-8")
+                metadata = json.load(archive.extractfile("package/package.json"))
                 for filename in filenames:
                     member = archive.getmember("package/dist/" + filename)
                     if not member.isfile():
@@ -80,7 +85,17 @@ def main() -> int:
         else:
             bundle_dir = (args.bundle_dir or root / "package" / "dist").resolve()
             bundles = {filename: (bundle_dir / filename).read_text(encoding="utf-8") for filename in filenames}
-    except (OSError, ValueError, KeyError, tarfile.TarError) as error:
+            readme = (bundle_dir.parent / "README.md").read_text(encoding="utf-8")
+            metadata = json.loads((bundle_dir.parent / "package.json").read_text(encoding="utf-8"))
+        prepared = subprocess.run(
+            [os.environ.get("NODE", "node"), str(example_helper)],
+            input=json.dumps({"readme": readme, "metadata": metadata}),
+            text=True, encoding="utf-8", capture_output=True, timeout=30,
+        )
+        if prepared.returncode:
+            raise ValueError(prepared.stderr)
+        examples = json.loads(prepared.stdout)
+    except (OSError, ValueError, KeyError, AttributeError, tarfile.TarError, subprocess.TimeoutExpired) as error:
         parser.exit(1, f"Browser verification failed: {error}\n")
     try:
         from playwright.sync_api import sync_playwright
@@ -108,8 +123,48 @@ def main() -> int:
                     for filename in filenames:
                         context = browser.new_context()
                         try:
-                            # No test needs an external request or a file-URL exemption.
-                            context.route("**/*", lambda route: route.abort())
+                            # Only this candidate's exact CDN URL is served locally.
+                            # Every other network request is blocked.
+                            allowed = {example["url"] for example in examples[filename]}
+                            requested = []
+                            def route_candidate(route):
+                                if route.request.url in allowed:
+                                    requested.append(route.request.url)
+                                    route.fulfill(status=200, content_type="application/javascript", body=bundles[filename])
+                                else:
+                                    route.abort()
+                            context.route("**/*", route_candidate)
+                            documentation_assertions = 0
+                            for example in examples[filename]:
+                                example_page = context.new_page()
+                                page_errors = []
+                                example_page.on("pageerror", lambda error: page_errors.append(str(error)))
+                                example_page.set_default_timeout(15000)
+                                example_page.add_script_tag(content="""
+                                    window.__exampleAssertions = 0;
+                                    window.assert = {
+                                      equal(actual, expected) {
+                                        if (actual !== expected) throw new Error('README result mismatch');
+                                        window.__exampleAssertions++;
+                                      },
+                                      throws(call, expected) {
+                                        try { call(); } catch (error) {
+                                          if (error.name !== expected.name) throw error;
+                                          window.__exampleAssertions++;
+                                          return;
+                                        }
+                                        throw new Error('README expected an exception');
+                                      }
+                                    };
+                                """)
+                                # WebKit may preload and then request the same script again.
+                                before_requests = len(requested)
+                                example_page.set_content(example["html"], wait_until="load")
+                                count = example_page.evaluate("window.__exampleAssertions")
+                                if page_errors or count != example["assertions"] or len(requested) <= before_requests:
+                                    raise RuntimeError(f"README browser example failed: {page_errors}; {count}/{example['assertions']} assertions; requests={requested[before_requests:]}")
+                                documentation_assertions += count
+                                example_page.close()
                             page = context.new_page()
                             page.set_default_timeout(15000)
                             page.set_content("<!doctype html><html><body></body></html>")
@@ -118,12 +173,12 @@ def main() -> int:
                             report = page.evaluate("runGoEqualityBrowserTests(Equality)")
                             if not isinstance(report, dict) or not report.get("cases"):
                                 raise RuntimeError("Browser suite returned no test cases.")
-                            report.update(**candidate, browser=name, browserVersion=browser.version, playwrightVersion=version("playwright"), python=platform.python_version(), bundle=filename)
+                            report.update(**candidate, documentationAssertions=documentation_assertions, browser=name, browserVersion=browser.version, playwrightVersion=version("playwright"), python=platform.python_version(), bundle=filename)
                             report["passed"] = sum(case.get("pass") is True for case in report["cases"])
                             report["failed"] = len(report["cases"]) - report["passed"]
                             failed |= report["failed"] != 0
                             reports.append(report)
-                            print(f'{name} {browser.version}, {filename}: {report["passed"]}/{len(report["cases"])} passed; {report["failed"]} failed', flush=True)
+                            print(f'{name} {browser.version}, {filename}: {report["passed"]}/{len(report["cases"])} passed; {report["failed"]} failed; {documentation_assertions} README assertions', flush=True)
                             for case in report["cases"]:
                                 if not case.get("pass"):
                                     print(json.dumps(case), file=sys.stderr)
@@ -133,7 +188,7 @@ def main() -> int:
                     browser.close()
     except Exception as error:
         failed = True
-        print(f"Browser verification failed: {error}\nMissing browsers are failures, not skips. Install with: python -m playwright install {args.browser if args.browser != 'all' else 'chromium firefox webkit'}", file=sys.stderr)
+        print(f"Browser verification failed: {error}", file=sys.stderr)
         reports.append({**candidate, "harnessError": str(error), "failed": 1})
     finally:
         if args.output:

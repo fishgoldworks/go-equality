@@ -2,6 +2,7 @@
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const packageRoot = path.join(root, 'package');
+const consumerEngines = { node: '>=8.0.0' };
 const consumerFiles = ['index.js', 'index.d.ts', 'README.md', 'docs/API.md', 'LICENSE.md', 'CHANGELOG.md'];
 function consumerManifest() {
   const metadata = require('../package.json');
@@ -18,7 +19,6 @@ function consumerManifest() {
     'repository',
     'bugs',
     'funding',
-    'engines',
     'os',
     'cpu',
     'dependencies',
@@ -32,15 +32,17 @@ function consumerManifest() {
     }
   }
   Object.assign(manifest, {
+    engines: consumerEngines,
     main: 'index.js',
     types: 'index.d.ts',
-    sideEffects: false,
+    sideEffects: ['./dist/go-equality.js', './dist/go-equality.min.js'],
     files: [
       'index.js',
       'index.d.ts',
       'src/*.js',
       'dist/go-equality.js',
       'dist/go-equality.min.js',
+      'dist/go-equality.min.js.map',
       'README.md',
       'docs/API.md',
       'LICENSE.md',
@@ -91,4 +93,4 @@ function consumerManifest() {
     [...fields, 'os', 'cpu'].filter((field) => manifest[field] !== undefined).map((field) => [field, manifest[field]])
   );
 }
-module.exports = { root, packageRoot, consumerFiles, consumerManifest };
+module.exports = { consumerEngines, root, packageRoot, consumerFiles, consumerManifest };

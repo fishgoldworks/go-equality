@@ -2,6 +2,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { consumerEngines } = require('./package-layout');
 
 function publicCallForms(api) {
   const functions = Object.entries(api).filter(([, value]) => typeof value === 'function');
@@ -16,12 +17,13 @@ function publicCallForms(api) {
     );
 }
 
-function renderDocument(template, metadata, api, templateName) {
+function renderDocument(template, metadata, api, templateName, engines) {
   const names = publicCallForms(api);
-  const minimumNode = /^>=(\d+\.\d+\.\d+)$/.exec(metadata.engines.node);
+  const minimumNode = /^>=(\d+\.\d+\.\d+)$/.exec(engines.node);
   assert.ok(minimumNode, 'The README template expects a single minimum Node version.');
   const fields = {
     VERSION: metadata.version,
+    NAME: metadata.name,
     LICENSE: metadata.license,
     NODE_MIN_VERSION: minimumNode[1],
     TYPESCRIPT_VERSION: metadata.devDependencies.typescript,
@@ -40,6 +42,7 @@ function renderDocument(template, metadata, api, templateName) {
   let fence;
   let includeContents = false;
   let includeApi = false;
+  let currentApi;
   for (const line of source.split('\n')) {
     const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
     if (fence) {
@@ -55,6 +58,15 @@ function renderDocument(template, metadata, api, templateName) {
     if (line === '{{TOC}}') {
       includeContents = true;
       continue;
+    }
+    const alias = /^\*\*Direct import:\*\* You can also import this function as `([\w.$]+)` from `go-equality`\.$/.exec(
+      line
+    );
+    if (includeApi && currentApi && alias) {
+      const resolve = (name) => name.split('.').reduce((value, part) => value?.[part], api);
+      assert.ok(typeof resolve(alias[1]) === 'function', 'A direct import must name a public function: ' + alias[1]);
+      assert.equal(resolve(alias[1]), resolve(currentApi), 'A documented alias must be the same function: ' + alias[1]);
+      documented.push(alias[1]);
     }
     const heading = /^(#{1,6}) (.+)$/.exec(line);
     if (!heading) {
@@ -73,11 +85,13 @@ function renderDocument(template, metadata, api, templateName) {
       includeApi = true;
     } else if (level <= 2) {
       includeApi = false;
+      currentApi = undefined;
     }
     if (includeApi && level === 3) {
       const signature = /^`([\w.$]+)\(.*\)`$/.exec(title);
       assert.ok(signature, 'Public API headings must include a signature: ' + title);
-      documented.push(signature[1]);
+      currentApi = signature[1];
+      documented.push(currentApi);
     }
     const selectedSubsection = level === 3 && ['Supported types', 'Custom equality'].includes(title);
     if (includeContents && (level === 2 || (templateName === 'API' && selectedSubsection))) {
@@ -99,12 +113,12 @@ function renderDocument(template, metadata, api, templateName) {
     );
 }
 
-function renderDocuments(templates, metadata, api) {
-  const reference = renderDocument(templates.API, metadata, api, 'API');
+function renderDocuments(templates, metadata, api, engines = consumerEngines) {
+  const reference = renderDocument(templates.API, metadata, api, 'API', engines);
   const section = reference.split('## API summary\n')[1]?.split('\n## ')[0];
   const summary = section?.match(/^\|[^\n]+\n(?:\|[^\n]+\n)+/m)?.[0].trimEnd();
   assert.ok(summary, 'The API reference must contain an API summary table.');
-  const documented = [...summary.matchAll(/\[`([\w.$]+)\([^`]*`\]\(#[^)]+\)/g)].map((match) => match[1]);
+  const documented = [...summary.matchAll(/\[`([\w.$]+)(?:\([^`]*)?`\]\(#[^)]+\)/g)].map((match) => match[1]);
   assert.deepEqual(
     documented.sort(),
     publicCallForms(api).sort(),
@@ -117,7 +131,7 @@ function renderDocuments(templates, metadata, api) {
   );
   const overview = templates.README.replace('{{API_SUMMARY}}', () => summary.replace(/\]\(#/g, '](docs/API.md#'));
   return {
-    'README.md': renderDocument(overview, metadata, api, 'README'),
+    'README.md': renderDocument(overview, metadata, api, 'README', engines),
     'docs/API.md': reference
   };
 }

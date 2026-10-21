@@ -3,7 +3,7 @@
 const compare = require('./compare');
 
 /**
- * Determines whether two values are deeply equal, preserving primitive types and
+ * Checks whether two values are deeply equal, preserving primitive types and
  * distinguishing wrapper objects from primitive values.
  *
  * Compares nested contents of arrays and supported objects, so separate objects
@@ -20,7 +20,7 @@ const compare = require('./compare');
  * @returns {boolean} `true` if the values are deeply equal under strict
  * comparison rules; otherwise `false`.
  * @throws {TypeError} If an invoked `equals()` method returns a non-boolean.
- * @see https://github.com/koyote130708/go-equality/blob/master/docs/API.md#isstrictequalvalue-other
+ * @see https://github.com/fishgoldworks/go-equality/blob/master/docs/API.md#isequalstrictvalue-other
  */
 function isStrictEqual(value, other) {
   return compare(value, other, 'strict');

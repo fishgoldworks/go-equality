@@ -13,7 +13,17 @@ function verifyLoaders(directory = path.join(require('./package-layout').package
     assert.ok(source.includes(license), 'Standalone bundle must preserve the full licence notice: ' + file);
     assert.equal(source.startsWith('/*! go-equality v' + version + ' |'), true, 'Stale bundle version: ' + file);
     if (file.endsWith('.min.js')) {
-      const code = source.replace(/^\/\*![\s\S]*?\*\/\s*/, '').trim();
+      assert.match(source, /\n\/\/# sourceMappingURL=go-equality\.min\.js\.map\s*$/);
+      const map = JSON.parse(fs.readFileSync(path.join(directory, file + '.map'), 'utf8'));
+      assert.equal(map.version, 3);
+      assert.equal(map.file, file);
+      assert.deepEqual(map.sources, ['go-equality.js']);
+      assert.deepEqual(map.sourcesContent, [fs.readFileSync(path.join(directory, 'go-equality.js'), 'utf8')]);
+      assert.ok(map.mappings.length > 0, 'Minified bundle must map back to the readable bundle.');
+      const code = source
+        .replace(/^\/\*![\s\S]*?\*\/\s*/, '')
+        .replace(/\n\/\/# sourceMappingURL=[^\n]+\s*$/, '')
+        .trim();
       assert.equal(
         /[\r\n\u2028\u2029]/.test(code),
         false,

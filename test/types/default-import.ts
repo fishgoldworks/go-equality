@@ -38,7 +38,9 @@ if (
   throw new Error('Bound and wrapped customisers must retain their receiver and fallback rules');
 }
 const noReceiverCompare = isEqual.create(function (left, right) {
-  if ((this satisfies undefined) !== undefined) {
+  // eslint-disable-next-line @typescript-eslint/no-this-alias -- Check contextual this on pre-satisfies compilers.
+  const receiver: undefined = this;
+  if (receiver !== undefined) {
     throw new Error('An unbound customiser must not receive a comparison context');
   }
   return typeof left === 'string' && typeof right === 'string' ? left === right : undefined;
