@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 2.0.0 — 2026-10-22
 
-Planned version: 2.0.0. See [Migration](README.md#migration) for upgrading from 1.0.4.
+See [Migration](README.md#migration) for upgrading from 1.0.4.
 
 ### Breaking changes
 
