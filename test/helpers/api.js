@@ -22,7 +22,7 @@ if (format === 'global' || format === 'amd') {
     sandbox.define.amd = {};
   }
   vm.runInNewContext(fs.readFileSync(entry, 'utf8'), sandbox, { filename: entry });
-  module.exports = format === 'amd' ? result : sandbox.Equality;
+  module.exports = format === 'amd' ? result : sandbox.goEquality;
 } else {
   module.exports = require(entry);
 }

@@ -24,7 +24,7 @@ for (const { file, index, code } of examples) {
     assert.ok(assertions > 0, 'Each example must state at least one checked result');
     vm.runInNewContext(
       bindImports(source),
-      { __api: api, Equality: api, assert },
+      { __api: api, goEquality: api, assert },
       { filename: file + ' example ' + (index + 1), timeout: 5000 }
     );
   });

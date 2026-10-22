@@ -42,7 +42,7 @@ class ReportInputTests(unittest.TestCase):
                 info = tarfile.TarInfo("package/dist/" + filename)
                 info.size = len(content)
                 archive.addfile(info, io.BytesIO(content))
-        self.readme = '<script src="https://cdn.jsdelivr.net/npm/go-equality@2.0.0/dist/go-equality.min.js"></script>\n<script>Equality.isEqual(1, 1); // => true\n</script>'
+        self.readme = '<script src="https://cdn.jsdelivr.net/npm/go-equality@2.0.0/dist/go-equality.min.js"></script>\n<script>goEquality.isEqual(1, 1); // => true\n</script>'
         self.write_candidate()
         self.digest = Path(str(self.tarball) + ".sha256")
         self.digest.write_text(hashlib.sha256(self.tarball.read_bytes()).hexdigest() + "  candidate.tgz\n")

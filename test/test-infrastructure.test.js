@@ -20,7 +20,7 @@ function fixture(t) {
     } else if (typeof define === 'function') {
       define([], () => ({ selected: 'amd' }));
     } else {
-      this.Equality = { selected: 'global' };
+      this.goEquality = { selected: 'global' };
     }
   `
   );

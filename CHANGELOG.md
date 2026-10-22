@@ -6,6 +6,7 @@ See [Migration](README.md#migration) for upgrading from 1.0.4.
 
 ### Breaking changes
 
+- Renamed the browser global from `Equality` to `goEquality`. CommonJS and ES module imports remain unchanged.
 - Restricted public imports to the package root, the listed browser bundles and package metadata. Import comparison functions from `go-equality` instead of internal `src/` paths.
 - Required instance `equals()` methods to return booleans. Either method can reject a comparison; both must return `true` to bypass structural comparison. Exceptions propagate to the caller.
 - Limited loose coercion to primitive values. Arbitrary objects are no longer converted through application `valueOf()` or `toString()` methods.

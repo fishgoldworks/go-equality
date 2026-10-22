@@ -330,7 +330,7 @@ for (const name of ['go-equality.js', 'go-equality.min.js']) {
       sandbox.define.amd = {};
     }
     vm.runInNewContext(source, sandbox, { filename: name });
-    exercise(format === 'amd' ? api : sandbox.Equality, name + ' ' + format);
+    exercise(format === 'amd' ? api : sandbox.goEquality, name + ' ' + format);
   }
 }
 console.log(

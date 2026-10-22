@@ -63,7 +63,7 @@ function bundle(output) {
 (function (root, factory) {
   if (typeof module === 'object' && module !== null && module.exports) module.exports = factory();
   else if (typeof define === 'function' && define.amd) define([], factory);
-  else root.Equality = factory();
+  else root.goEquality = factory();
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
   const modules = [

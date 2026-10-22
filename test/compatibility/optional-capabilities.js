@@ -296,7 +296,7 @@ function run(entry, format, scenario, focus) {
   }
   vm.runInContext(fs.readFileSync(entry, 'utf8'), context, { filename: entry });
   if (format === 'global') {
-    sandbox.api = sandbox.Equality;
+    sandbox.api = sandbox.goEquality;
   }
   return vm.runInContext("'use strict';\n(" + exercise.toString() + ')(api, fixture, assert)', context);
 }

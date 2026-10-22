@@ -63,7 +63,7 @@ test('the public API works without optional native capabilities', () => {
         sandbox.define.amd = {};
       }
       vm.runInContext(fs.readFileSync(entry, 'utf8'), sandbox, { filename: entry });
-      if (format === 'global') api = sandbox.Equality;
+      if (format === 'global') api = sandbox.goEquality;
     } else {
       api = require(entry);
     }

@@ -170,7 +170,7 @@ def main() -> int:
                             page.set_content("<!doctype html><html><body></body></html>")
                             page.add_script_tag(content=bundles[filename])
                             page.add_script_tag(content=suite)
-                            report = page.evaluate("runGoEqualityBrowserTests(Equality)")
+                            report = page.evaluate("runGoEqualityBrowserTests(goEquality)")
                             if not isinstance(report, dict) or not report.get("cases"):
                                 raise RuntimeError("Browser suite returned no test cases.")
                             report.update(**candidate, documentationAssertions=documentation_assertions, browser=name, browserVersion=browser.version, playwrightVersion=version("playwright"), python=platform.python_version(), bundle=filename)

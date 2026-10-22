@@ -441,7 +441,7 @@ test('standalone memory diagnostics retain entry and global-format overrides', (
       `
 function compare() { throw new Error('Standalone memory diagnostic sentinel'); }
 compare.create = () => compare;
-this.Equality = {isEqual: compare};
+this.goEquality = {isEqual: compare};
 `
     );
     const result = spawnSync(process.execPath, [path.join(root, 'scripts/test-memory.js')], {

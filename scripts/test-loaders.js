@@ -33,7 +33,7 @@ function verifyLoaders(directory = path.join(require('./package-layout').package
     for (const unrelatedModule of [undefined, null, {}, 0, 'unrelated']) {
       for (const amd of [false, true]) {
         let result;
-        const sandbox = { module: unrelatedModule };
+        const sandbox = { module: unrelatedModule, Equality: 'unrelated global' };
         if (amd) {
           sandbox.define = (dependencies, factory) => {
             assert.equal(Array.isArray(dependencies) && dependencies.length === 0, true);
@@ -42,7 +42,8 @@ function verifyLoaders(directory = path.join(require('./package-layout').package
           sandbox.define.amd = {};
         }
         vm.runInNewContext(source, sandbox, { filename: file });
-        const api = amd ? result : sandbox.Equality;
+        const api = amd ? result : sandbox.goEquality;
+        assert.equal(sandbox.Equality, 'unrelated global');
         assert.deepEqual(Object.keys(api).sort(), ['isEqual', 'isLooseEqual', 'isStrictEqual']);
         assert.equal(api.isEqual({ x: 1 }, { x: 1 }), true);
         assert.equal(api.isLooseEqual(1, '1'), true);
@@ -59,7 +60,7 @@ function verifyLoaders(directory = path.join(require('./package-layout').package
     sandbox.define.amd = {};
     vm.runInNewContext(source, sandbox, { filename: file });
     assert.equal(sandbox.module.exports.isEqual(new Set([1]), new Set([1])), true);
-    assert.equal(Object.hasOwn(sandbox, 'Equality'), false);
+    assert.equal(Object.hasOwn(sandbox, 'goEquality'), false);
     checks++;
   }
   console.log('Loader environment checks passed: ' + checks + '.');

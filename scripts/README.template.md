@@ -83,13 +83,13 @@ Load Go Equality from jsDelivr or host a bundle yourself:
 - [Minified bundle](https://cdn.jsdelivr.net/npm/{{NAME}}@{{VERSION}}/dist/go-equality.min.js)
 - [Readable bundle](https://cdn.jsdelivr.net/npm/{{NAME}}@{{VERSION}}/dist/go-equality.js)
 
-The bundle exposes the `Equality` namespace:
+The bundle exposes `goEquality`:
 
 <!-- prettier-ignore -->
 ```html
 <script src="https://cdn.jsdelivr.net/npm/{{NAME}}@{{VERSION}}/dist/go-equality.min.js"></script>
 <script>
-  const { isEqual } = Equality;
+  const { isEqual } = goEquality;
 
   isEqual({ id: 1 }, { id: 1 });   // => true
   isEqual({ id: 1 }, { id: 2 });   // => false
@@ -254,6 +254,7 @@ The library does not change inputs or cache comparison results between calls. Se
 When upgrading from 1.0.4:
 
 - **Imports:** Import `isEqual`, `isLooseEqual` and `isStrictEqual` from `go-equality`. Replace imports from internal `src/` paths; those paths are no longer public. Existing root calls remain supported.
+- **Browser global:** Replace `Equality` with `goEquality`, for example `const { isEqual } = goEquality;`.
 - **Instance hooks:** Make custom instance `equals()` methods return `true` or `false`. Either method can reject the comparison, and both must accept it to bypass the normal structural checks. For a partial rule that delegates to the library, use `isEqual.custom()` and return `undefined` when your rule does not apply.
 - **Comparison changes:** Review comparisons that depend on loose object coercion, wrapper objects, sparse arrays, symbols, non-enumerable properties, constructors or `RegExp` `lastIndex`. Version 2 applies the documented rules consistently; loose mode does not call arbitrary object conversion methods. Convert application values explicitly when that is your intended rule.
 - **VM Buffers:** When comparing host Buffers inside a Node VM or sandbox, expose the host's trusted `Buffer` constructor before loading the library.
