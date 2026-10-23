@@ -273,10 +273,14 @@ function run(entry, format, scenario, focus) {
   const removals = scenario[1];
   if (format === 'commonjs') {
     const fixture = prepare(global, removals);
-    const focused = focus ? require(path.join(path.dirname(require.resolve(entry)), 'src', focus + '.js')) : null;
+    const publicFocus = focus && focus.indexOf('public/') === 0;
+    const name = publicFocus ? focus.slice(7) : focus;
+    const focused = focus
+      ? require(publicFocus ? entry + '/' + name : path.join(path.dirname(require.resolve(entry)), 'src', name + '.js'))
+      : null;
     const api = require(entry);
     if (focus) {
-      assert.strictEqual(focused, api[focus], 'Focused source import retains public function identity');
+      assert.strictEqual(focused, api[name], 'Focused import retains public function identity');
     }
     return exercise(api, fixture, assert);
   }

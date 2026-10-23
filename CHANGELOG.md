@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Added `go-equality/isEqual`, `go-equality/isStrictEqual` and `go-equality/isLooseEqual` function subpaths, with callable CommonJS imports, default/named ES module imports and TypeScript declarations. They share the root functions and attached methods; existing imports and runtime/compiler requirements are unchanged.
+
 ## 2.0.0 — 2026-10-22
 
 See [Migration](README.md#migration) for upgrading from 1.0.4.

@@ -31,12 +31,13 @@ try {
   for (const file of files) {
     assert.match(
       file,
-      /^(?:src\/[A-Za-z]+\.js|dist\/go-equality(?:\.js|\.min\.js(?:\.map)?)|index\.(?:js|d\.ts)|package\.json|README\.md|docs\/API\.md|LICENSE\.md|CHANGELOG\.md)$/
+      /^(?:src\/[A-Za-z]+\.js|dist\/go-equality(?:\.js|\.min\.js(?:\.map)?)|(?:index|isEqual|isStrictEqual|isLooseEqual)\.(?:js|mjs|d\.(?:ts|cts|mts))|package\.json|README\.md|docs\/API\.md|LICENSE\.md|CHANGELOG\.md)$/
     );
   }
   for (const file of [
     'index.js',
     'index.d.ts',
+    ...require('./package-layout').functionFiles,
     'package.json',
     ...documentFiles,
     'LICENSE.md',
@@ -56,6 +57,12 @@ try {
   assert.equal(installedMetadata.engines.node, '>=8.0.0');
   assert.match(fs.readFileSync(path.join(entry, 'LICENSE.md'), 'utf8'), /Permission is hereby granted, free of charge/);
   fs.copyFileSync(path.join(root, 'test/compatibility/consumer.js'), path.join(consumer, 'compatibility.js'));
+  for (const file of ['subpaths.js', 'subpaths.mjs']) {
+    fs.copyFileSync(
+      path.join(root, 'test/compatibility', file + (file.endsWith('.mjs') ? '.txt' : '')),
+      path.join(consumer, file)
+    );
+  }
   const runtimes = [...new Set([process.execPath, ...(values.node ? [values.node] : [])])];
   const esmRuntimes = [];
   for (const runtime of runtimes) {
@@ -64,6 +71,7 @@ try {
       esmRuntimes.push(runtime);
     }
     console.log('Installed consumer runtime: ' + version);
+    process.stdout.write(run(runtime, ['subpaths.js'], consumer));
     process.stdout.write(run(runtime, ['compatibility.js'], consumer));
     require('./consumer-optional')(consumer, runtime, require('./runtime-support')(version));
   }
@@ -90,6 +98,7 @@ try {
     "import Eq,{isEqual,isLooseEqual,isStrictEqual} from 'go-equality';import {createRequire} from 'module';const common=createRequire(import.meta.url)('go-equality');if(Eq!==common||Eq.isEqual!==isEqual||Eq.isLooseEqual!==isLooseEqual||Eq.isStrictEqual!==isStrictEqual)throw Error('Default import API mismatch');if(!isEqual({a:1},{a:1})||!isLooseEqual(1,'1')||isStrictEqual(1,Object(1)))throw Error('ESM import failed');if(isEqual.strict!==isStrictEqual||isEqual.loose!==isLooseEqual||!isEqual.custom(1,2,()=>true)||!isEqual.create(()=>undefined,{mode:'loose'})(1,'1'))throw Error('ESM attached API failed');"
   );
   for (const runtime of esmRuntimes) {
+    process.stdout.write(run(runtime, ['subpaths.mjs'], consumer));
     run(runtime, ['esm-import.mjs'], consumer);
   }
   require('./consumer-types')(consumer, runtimes, esmRuntimes);

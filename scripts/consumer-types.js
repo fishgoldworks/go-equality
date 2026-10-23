@@ -12,7 +12,23 @@ module.exports = function checkConsumerTypes(consumer, runtimes, esmRuntimes) {
     fs.copyFileSync(path.join(fixtures, 'consumer.ts'), path.join(consumer, 'consumer.' + extension));
   }
   fs.copyFileSync(path.join(fixtures, 'require.cts'), path.join(consumer, 'require.cts'));
-  config.files = ['consumer.cts', 'consumer.mts', 'require.cts'];
+  for (const [source, destination] of [
+    ['subpaths-require.cts.txt', 'subpaths-require.cts'],
+    ['subpaths-default.ts.txt', 'subpaths-default.cts'],
+    ['subpaths-default.ts.txt', 'subpaths-default.mts'],
+    ['subpaths-named.mts.txt', 'subpaths-named.mts']
+  ]) {
+    fs.copyFileSync(path.join(fixtures, source), path.join(consumer, destination));
+  }
+  config.files = [
+    'consumer.cts',
+    'consumer.mts',
+    'require.cts',
+    'subpaths-require.cts',
+    'subpaths-default.cts',
+    'subpaths-default.mts',
+    'subpaths-named.mts'
+  ];
   fs.writeFileSync(path.join(consumer, 'tsconfig.json'), JSON.stringify(config, null, 2) + '\n');
   run(process.execPath, [require.resolve('typescript/bin/tsc'), '--project', 'tsconfig.json'], consumer);
   // Execute emitted consumers to catch declaration-only or interop-only successes.
@@ -22,15 +38,25 @@ module.exports = function checkConsumerTypes(consumer, runtimes, esmRuntimes) {
   const emittedConfig = {
     ...config,
     compilerOptions: { ...config.compilerOptions, noEmit: false, outDir: 'compiled' },
-    files: ['default-import.cts', 'default-import.mts']
+    files: [
+      'default-import.cts',
+      'default-import.mts',
+      'subpaths-default.cts',
+      'subpaths-default.mts',
+      'subpaths-named.mts'
+    ]
   };
   fs.writeFileSync(path.join(consumer, 'tsconfig.emit.json'), JSON.stringify(emittedConfig, null, 2) + '\n');
   run(process.execPath, [require.resolve('typescript/bin/tsc'), '--project', 'tsconfig.emit.json'], consumer);
   for (const runtime of runtimes) {
-    run(runtime, [path.join('compiled', 'default-import.cjs')], consumer);
+    for (const file of ['default-import.cjs', 'subpaths-default.cjs']) {
+      run(runtime, [path.join('compiled', file)], consumer);
+    }
   }
   for (const runtime of esmRuntimes) {
-    run(runtime, [path.join('compiled', 'default-import.mjs')], consumer);
+    for (const file of ['default-import.mjs', 'subpaths-default.mjs', 'subpaths-named.mjs']) {
+      run(runtime, [path.join('compiled', file)], consumer);
+    }
   }
   require('./test-types-compat')({ directory: path.join(consumer, 'node_modules/go-equality') });
 };

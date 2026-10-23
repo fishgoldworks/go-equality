@@ -3,7 +3,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { minify_sync: minifyJavaScript } = require('terser');
 const acorn = require('acorn');
-const { root, packageRoot: destination, consumerFiles, consumerManifest } = require('./package-layout');
+const {
+  root,
+  packageRoot: destination,
+  consumerFiles,
+  consumerManifest,
+  writeFunctionEntries
+} = require('./package-layout');
 const metadata = require('../package.json');
 const license = fs.readFileSync(path.join(root, 'LICENSE.md'), 'utf8').replace(/\r\n/g, '\n').trim();
 const banner = `/*! go-equality v${metadata.version} | ${metadata.license}\n\n${license}\n*/`;
@@ -176,6 +182,7 @@ function main() {
         fs.copyFileSync(path.join(root, 'src', file.name), path.join(temporary, 'src', file.name));
       }
     }
+    writeFunctionEntries(temporary);
     fs.writeFileSync(path.join(temporary, 'package.json'), JSON.stringify(consumerManifest(), null, 2) + '\n');
     const bundles = path.join(temporary, 'dist');
     bundle(bundles);

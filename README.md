@@ -51,7 +51,7 @@ yarn add go-equality
 
 | Environment | Requirement                                                                                                                            |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| CommonJS    | Node.js 8.0.0 or later through the package root.                                                                        |
+| CommonJS    | Node.js 8.0.0 or later through the package root or function subpaths.                                                   |
 | ES modules  | Native default and named imports work on Node.js 14.13.0 or later, or Node.js 12.20.0+ within 12.x, through CommonJS interoperability. |
 | Browser     | ES2017 syntax plus `Map`, `Set`, `Symbol`, `Reflect.ownKeys` and `Reflect.apply`.                                                      |
 
@@ -76,6 +76,8 @@ isEqual(1, '1');                                     // => false
 isEqual.strict(1, '1');                              // => false
 isEqual.loose(1, '1');                               // => true
 ```
+
+`isEqual` can also be imported with `import isEqual from 'go-equality/isEqual'`. The `isStrictEqual` and `isLooseEqual` subpaths follow the same pattern.
 
 ### CommonJS
 
@@ -109,7 +111,7 @@ The bundle exposes `goEquality`:
 
 Both bundles are included under `dist/` in the npm package and support CommonJS and AMD loaders. The minified bundle includes a source map to the readable bundle.
 
-**Import notes:** The examples use `isEqual` and its attached methods. Individual-function subpaths such as `go-equality/isEqual` and `go-equality/src/isEqual.js` are not public entry points. See [TypeScript](#typescript) for declarations and typing behaviour.
+**Import notes:** Function subpaths provide the same functions as the root imports, including `isEqual`'s attached methods. They support default and named ES module imports; CommonJS `require('go-equality/isEqual')` returns the function directly. Internal `src/` paths remain private. See [TypeScript](#typescript) for declarations and typing behaviour.
 
 ## API summary
 
@@ -251,6 +253,8 @@ Consumer declarations support TypeScript 3.0 or later. Additional module-resolut
 
 - **Node16/NodeNext:** TypeScript 4.7 or later.
 - **Bundler:** TypeScript 5.0 or later.
+
+Named imports from function subpaths require Node16, NodeNext or Bundler resolution. With legacy `node` resolution, use named root imports or default subpath imports. Default subpath imports need `esModuleInterop` for CommonJS output, or `allowSyntheticDefaultImports` for ES module output.
 
 See [TypeScript types](docs/API.md#typescript-types) for the comparator, customiser, mode and options declarations, and [Usage](#usage) for imports.
 

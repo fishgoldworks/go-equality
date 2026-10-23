@@ -1,0 +1,21 @@
+import isEqual = require('go-equality/isEqual');
+import isStrictEqual = require('go-equality/isStrictEqual');
+import isLooseEqual = require('go-equality/isLooseEqual');
+const equal: boolean = isEqual({ id: 1 }, { id: 1 });
+const strict: boolean = isStrictEqual(1, new Number(1));
+const loose: boolean = isLooseEqual(1, '1');
+const compare = isEqual.create(() => undefined, { mode: 'loose' });
+const custom: boolean = isEqual.custom('A', 'a', (left, right) => typeof left === 'string' && typeof right === 'string' ? left.toLowerCase() === right.toLowerCase() : undefined);
+// @ts-expect-error comparisons require two values
+isEqual(1);
+// @ts-expect-error customisers must return boolean or undefined
+isEqual.custom(1, 2, () => 1);
+// @ts-expect-error mode aliases are plain comparators
+isStrictEqual.custom(1, 2, () => true);
+// @ts-expect-error a reusable comparator has no attached modes
+compare.strict(1, 1);
+void equal; void strict; void loose; void custom;
+// @ts-expect-error the callable has no synthetic named-export property
+isEqual.isEqual(1, 1);
+// @ts-expect-error the callable has no synthetic default-export property
+isEqual.default(1, 1);

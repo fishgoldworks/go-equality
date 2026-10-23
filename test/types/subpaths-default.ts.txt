@@ -1,0 +1,10 @@
+import isEqual from 'go-equality/isEqual';
+import isStrictEqual from 'go-equality/isStrictEqual';
+import isLooseEqual from 'go-equality/isLooseEqual';
+import { isEqual as rootEqual, isStrictEqual as rootStrict, isLooseEqual as rootLoose } from 'go-equality';
+const equal: boolean = isEqual({ id: 1 }, { id: 1 });
+const strict: boolean = isStrictEqual(new Number(1), 1);
+const loose: boolean = isLooseEqual(1, '1');
+const custom: boolean = isEqual.custom('ADMIN', 'admin', (left, right) => typeof left === 'string' && typeof right === 'string' ? left.toLowerCase() === right.toLowerCase() : undefined);
+if (!equal || strict || !loose || !custom || !isEqual.create(() => undefined, { mode: 'loose' })(1, '1')) throw new Error('Subpath default import behaviour failed');
+if (isEqual !== rootEqual || isStrictEqual !== rootStrict || isLooseEqual !== rootLoose || isEqual.strict !== rootStrict || isEqual.loose !== rootLoose) throw new Error('Subpath default import identity failed');

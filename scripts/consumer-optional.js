@@ -15,7 +15,7 @@ module.exports = function checkOptionalCapabilities(consumer, runtime, esm) {
     "import suite from './optional-capabilities.js';\n" +
       'const scenario = suite.scenarios.find(item => item[0] === process.argv[2]);\n' +
       'global.optionalFixture = suite.prepare(global, scenario[1]);\n' +
-      "import('./optional-import.mjs').catch(error => { console.error(error); process.exitCode = 1; });\n"
+      "import('./optional-import' + (process.argv[3] ? '-' + process.argv[3] : '') + '.mjs').catch(error => { console.error(error); process.exitCode = 1; });\n"
   );
   const esmRunner = path.join(consumer, 'optional-import.mjs');
   fs.writeFileSync(
@@ -29,10 +29,21 @@ module.exports = function checkOptionalCapabilities(consumer, runtime, esm) {
       'const checks = suite.exercise({ isEqual, isLooseEqual, isStrictEqual }, global.optionalFixture, assert);\n' +
       'console.log(JSON.stringify({ scenario: process.argv[2], checks }));\n'
   );
-  const entries = [['go-equality', 'commonjs', '']];
-  // Focused source files are exercised internally, not advertised as package subpath exports.
+  const rootRunner = fs.readFileSync(esmRunner, 'utf8');
   for (const focus of ['isEqual', 'isLooseEqual', 'isStrictEqual']) {
-    entries.push(['go-equality', 'commonjs', focus]);
+    const focusedImports =
+      'import focusedDefault, { ' + focus + " as focusedNamed } from 'go-equality/" + focus + "';\n";
+    const checks =
+      'assert.strictEqual(focusedDefault, focusedNamed);\nassert.strictEqual(focusedNamed, ' + focus + ');\n';
+    fs.writeFileSync(
+      path.join(consumer, 'optional-import-' + focus + '.mjs'),
+      focusedImports + rootRunner.replace('const checks =', checks + 'const checks =')
+    );
+  }
+  const entries = [['go-equality', 'commonjs', '']];
+  // Public subpaths must load successfully after capability removal, before the root API.
+  for (const focus of ['isEqual', 'isLooseEqual', 'isStrictEqual']) {
+    entries.push(['go-equality', 'commonjs', 'public/' + focus]);
   }
   for (const file of ['go-equality.js', 'go-equality.min.js']) {
     for (const format of ['commonjs', 'global', 'amd']) {
@@ -48,7 +59,9 @@ module.exports = function checkOptionalCapabilities(consumer, runtime, esm) {
     if (esm) {
       // Initialise Node's CJS/ESM loader before removing Buffer: Node 12's lexer needs it.
       // No library module loads until after the bootstrap removes capabilities.
-      commands.push([bootstrap, scenario[0]]);
+      for (const focus of ['', 'isEqual', 'isLooseEqual', 'isStrictEqual']) {
+        commands.push([bootstrap, scenario[0], focus]);
+      }
     }
     for (const args of commands) {
       const report = JSON.parse(run(runtime, args, consumer, env));

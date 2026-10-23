@@ -1,0 +1,9 @@
+import { isEqual } from 'go-equality/isEqual';
+import { isStrictEqual } from 'go-equality/isStrictEqual';
+import { isLooseEqual } from 'go-equality/isLooseEqual';
+import { isEqual as rootEqual, isStrictEqual as rootStrict, isLooseEqual as rootLoose } from 'go-equality';
+const equal: boolean = isEqual({ id: 1 }, { id: 1 });
+const strict: boolean = isStrictEqual(new Number(1), 1);
+const loose: boolean = isLooseEqual(1, '1');
+if (!equal || strict || !loose || !isEqual.custom(1, 2, () => true)) throw new Error('Subpath named import behaviour failed');
+if (isEqual !== rootEqual || isStrictEqual !== rootStrict || isLooseEqual !== rootLoose) throw new Error('Subpath named import identity failed');

@@ -164,6 +164,9 @@ test('one build replaces stale output with the complete distribution', () =>
       'docs',
       'index.d.ts',
       'index.js',
+      ...['isEqual', 'isLooseEqual', 'isStrictEqual'].flatMap((name) =>
+        ['.d.cts', '.d.mts', '.d.ts', '.js', '.mjs'].map((extension) => name + extension)
+      ),
       'package.json',
       'src'
     ];
@@ -185,6 +188,9 @@ test('backup cleanup failure reports the active new distribution and an incomple
       'docs',
       'index.d.ts',
       'index.js',
+      ...['isEqual', 'isLooseEqual', 'isStrictEqual'].flatMap((name) =>
+        ['.d.cts', '.d.mts', '.d.ts', '.js', '.mjs'].map((extension) => name + extension)
+      ),
       'package.json',
       'src'
     ]);
@@ -264,6 +270,9 @@ test('build assembles a complete consumer package without changing canonical inp
       '.',
       './dist/go-equality.js',
       './dist/go-equality.min.js',
+      './isEqual',
+      './isLooseEqual',
+      './isStrictEqual',
       './package.json'
     ]);
     for (const key of ['private', 'scripts', 'devDependencies']) {

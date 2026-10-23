@@ -8,10 +8,19 @@ const root = path.resolve(__dirname, '..');
 const settings = {
   name: 'go-equality',
   package: 'package',
-  groups: [['contracts', ['require.cts', 'consumer.ts', 'default-import.ts'], 'ES2020']],
+  groups: [
+    [
+      'contracts',
+      ['require.cts', 'consumer.ts', 'default-import.ts', 'subpaths-require.cts.txt', 'subpaths-default.ts.txt'],
+      'ES2020'
+    ],
+    ['subpaths-legacy-esm', ['subpaths-default.ts.txt'], 'ES2020', 'ESNext', 'node'],
+    ['subpaths-node', ['subpaths-named.mts.txt'], 'ES2020', 'NodeNext'],
+    ['subpaths-bundler', ['subpaths-named.mts.txt'], 'ES2020', 'Bundler']
+  ],
   exportsOnly: false,
   indexChecks: false,
-  emit: 'default-import.ts'
+  emit: ['default-import.ts', 'subpaths-default.ts.txt']
 };
 
 // Keep the current compiler's complete module/emit suite in test-types.js.
@@ -45,7 +54,7 @@ function check({
     fs.writeFileSync(path.join(temporary, 'package.json'), '{"private":true}');
     let checked = 0;
     let rejected = 0;
-    for (const [group, names, lib, mode] of settings.groups) {
+    for (const [group, names, lib, mode, resolution] of settings.groups) {
       if (mode === 'NodeNext' && !atLeast(4, 7)) {
         continue;
       }
@@ -67,7 +76,10 @@ function check({
         }
 
         source = source.replace(/@ts-expect-error/g, '@expected-error');
-        const filename = path.join(folder, mode ? name : name.replace(/\.[cm]ts$/, '.ts'));
+        const filename = path.join(
+          folder,
+          mode ? name.replace(/\.txt$/, '') : name.replace(/\.txt$/, '').replace(/\.[cm]ts$/, '.ts')
+        );
         const lines = source.split(/\r?\n/);
         lines.forEach((line, index) => {
           if (!/^\s*\/\/\s*@expected-error\b/.test(line)) {
@@ -90,8 +102,9 @@ function check({
         target: lib === 'ES5' ? 'ES5' : atLeast(3, 8) ? 'ES2020' : 'ESNext',
         lib: [lib === 'ES2020' && !atLeast(3, 8) ? 'ESNext' : lib],
         module: mode === 'Bundler' ? 'ESNext' : mode || (settings.exportsOnly ? 'NodeNext' : 'commonjs'),
-        moduleResolution: mode || (settings.exportsOnly ? 'NodeNext' : 'node'),
-        esModuleInterop: true
+        moduleResolution: resolution || mode || (settings.exportsOnly ? 'NodeNext' : 'node'),
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true
       };
       if (atLeast(4, 1)) {
         options.noUncheckedIndexedAccess = true;
@@ -145,9 +158,13 @@ function check({
       checked += files.length;
       rejected += expectations.size;
     }
-    if (settings.emit) {
-      const filename = path.join(temporary, 'emitted.ts');
-      fs.copyFileSync(path.join(temporary, 'contracts', settings.emit.replace(/\.[cm]ts$/, '.ts')), filename);
+    for (const emit of settings.emit) {
+      const stem = 'emitted-' + emit.replace(/\.txt$/, '').replace(/\.[cm]?ts$/, '');
+      const filename = path.join(temporary, stem + '.ts');
+      fs.copyFileSync(
+        path.join(temporary, 'contracts', emit.replace(/\.txt$/, '').replace(/\.[cm]ts$/, '.ts')),
+        filename
+      );
       execFileSync(
         process.execPath,
         [
@@ -168,7 +185,10 @@ function check({
         ],
         { cwd: temporary, stdio: 'inherit' }
       );
-      execFileSync(process.execPath, [path.join(temporary, 'output/emitted.js')], { cwd: temporary, stdio: 'inherit' });
+      execFileSync(process.execPath, [path.join(temporary, 'output', stem + '.js')], {
+        cwd: temporary,
+        stdio: 'inherit'
+      });
     }
     console.log(
       'TypeScript ' +

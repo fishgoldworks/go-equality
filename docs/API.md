@@ -19,6 +19,8 @@ Choose a standard comparison when its type and content rules fit your data. Use 
 
 Examples assume named imports from `go-equality` unless an import is shown. `// =>` comments show results or exceptions. In parameter tables, `unknown` means any JavaScript value may be supplied; equality comparisons do not narrow its TypeScript type. The attached methods are read-only, non-enumerable properties of `isEqual`; the root export object is not callable.
 
+See [Usage](../README.md#usage) for root and function subpath imports.
+
 The **fallback mode** supplies the standard comparison rules used when your customiser returns `undefined`. Set it with `options.mode`.
 
 | API                                                                                                  | Description                                                                                                                                                                                            | Returns                                                                                                                                                                                           |
@@ -905,7 +907,7 @@ There are no public conversion functions. Optional wrapper unboxing is the only 
 
 `WeakMap`, `WeakSet`, `Promise`, `Atomics`, newer Object helpers, and binary resize/grow/transfer methods are not runtime dependencies. Unsupported objects retain the rules below. Optional support does not authorise substituting arbitrary functions for trusted native methods or replacing native prototype chains.
 
-These rules apply to the root API, its named functions and all supplied bundles. Internal source modules are also tested independently, but are not supported package subpath exports. Capability-absence tests do not establish syntax, loader or historical-browser compatibility; see [runtime support](../README.md#runtime-support) and the [verification guide](https://github.com/fishgoldworks/go-equality/blob/master/docs/development.md#optional-capability-checks).
+These rules apply to the root API, public function subpaths and all supplied bundles. Internal source modules are also tested independently; internal `src/` paths remain private. Capability-absence tests do not establish syntax, loader or historical-browser compatibility; see [runtime support](../README.md#runtime-support) and the [verification guide](https://github.com/fishgoldworks/go-equality/blob/master/docs/development.md#optional-capability-checks).
 
 ### Errors and supported inputs
 

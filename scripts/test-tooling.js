@@ -812,7 +812,8 @@ test('declaration checks reject dependencies on browser and contributor globals'
     const checkConsumerTypes = require('./consumer-types');
     const entry = path.join(directory, 'node_modules/go-equality');
     write(directory, 'package.json', '{"private":true}');
-    write(directory, 'node_modules/go-equality/package.json', '{"main":"index.js","types":"index.d.ts"}');
+    const { consumerManifest, writeFunctionEntries } = require('./package-layout');
+    write(directory, 'node_modules/go-equality/package.json', JSON.stringify(consumerManifest()));
     for (const filename of ['index.js', 'index.d.ts']) {
       fs.copyFileSync(path.join(root, filename), path.join(entry, filename));
     }
@@ -820,6 +821,7 @@ test('declaration checks reject dependencies on browser and contributor globals'
     for (const filename of fs.readdirSync(path.join(root, 'src')).filter((name) => name.endsWith('.js'))) {
       fs.copyFileSync(path.join(root, 'src', filename), path.join(entry, 'src', filename));
     }
+    writeFunctionEntries(entry);
     write(directory, 'node_modules/@types/contributor/index.d.ts', 'declare interface ContributorOnly {}');
     assert.doesNotThrow(() => checkConsumerTypes(directory, [process.execPath], [process.execPath]));
     const declaration = fs.readFileSync(path.join(entry, 'index.d.ts'), 'utf8');

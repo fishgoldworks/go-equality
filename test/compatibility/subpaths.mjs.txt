@@ -1,0 +1,34 @@
+import assert from 'assert';
+import process from 'process';
+import { createRequire } from 'module';
+import isEqual, { isEqual as namedEqual } from 'go-equality/isEqual';
+import isStrictEqual, { isStrictEqual as namedStrict } from 'go-equality/isStrictEqual';
+import isLooseEqual, { isLooseEqual as namedLoose } from 'go-equality/isLooseEqual';
+
+const require = createRequire(import.meta.url);
+assert.strictEqual(require.cache[require.resolve('go-equality')], undefined);
+for (const [name, fn] of [['isEqual', isEqual], ['isStrictEqual', isStrictEqual], ['isLooseEqual', isLooseEqual]]) {
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(fn, name), false);
+  assert.strictEqual(Object.prototype.hasOwnProperty.call(fn, 'default'), false);
+}
+assert.strictEqual(isEqual, namedEqual);
+assert.strictEqual(isStrictEqual, namedStrict);
+assert.strictEqual(isLooseEqual, namedLoose);
+assert.strictEqual(isEqual.strict, isStrictEqual);
+assert.strictEqual(isEqual.loose, isLooseEqual);
+assert.strictEqual(isEqual({ id: 1 }, { id: 1 }), true);
+assert.strictEqual(isStrictEqual(new Number(1), 1), false);
+assert.strictEqual(isLooseEqual(1, '1'), true);
+assert.strictEqual(isEqual.custom(1, 2, () => true), true);
+assert.strictEqual(isEqual.create(() => undefined, { mode: 'loose' })(1, '1'), true);
+
+import('go-equality').then((api) => {
+  assert.strictEqual(api.isEqual, isEqual);
+  assert.strictEqual(api.isStrictEqual, isStrictEqual);
+  assert.strictEqual(api.isLooseEqual, isLooseEqual);
+  assert.strictEqual(api.default, require('go-equality'));
+  console.log('Installed default/named ESM function subpaths share the CommonJS and root functions.');
+}).catch((error) => {
+  process.stderr.write(String(error.stack) + '\n');
+  process.exitCode = 1;
+});
