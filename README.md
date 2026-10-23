@@ -7,7 +7,7 @@
 [![Source line coverage](https://img.shields.io/badge/coverage-100%25-brightgreen.svg)](#development)
 [![Documentation](https://img.shields.io/badge/docs-100%25-brightgreen.svg)](docs/API.md)
 
-- **Version:** [2.0.0](CHANGELOG.md)
+- **Version:** [2.1.0](CHANGELOG.md)
 - **Licence:** [MIT](LICENSE.md)
 
 Use `isEqual(value, other)` to compare primitives and the nested contents of arrays and supported objects. Separate instances can compare equal even when they do not share a reference. Choose `isEqual.strict()` or `isEqual.loose()` to control how type differences are handled.
@@ -93,14 +93,14 @@ isEqual({ id: 1 }, { id: 2 });                       // => false
 
 Load Go Equality from jsDelivr or host a bundle yourself:
 
-- [Minified bundle](https://cdn.jsdelivr.net/npm/go-equality@2.0.0/dist/go-equality.min.js)
-- [Readable bundle](https://cdn.jsdelivr.net/npm/go-equality@2.0.0/dist/go-equality.js)
+- [Minified bundle](https://cdn.jsdelivr.net/npm/go-equality@2.1.0/dist/go-equality.min.js)
+- [Readable bundle](https://cdn.jsdelivr.net/npm/go-equality@2.1.0/dist/go-equality.js)
 
 The bundle exposes `goEquality`:
 
 <!-- prettier-ignore -->
 ```html
-<script src="https://cdn.jsdelivr.net/npm/go-equality@2.0.0/dist/go-equality.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/go-equality@2.1.0/dist/go-equality.min.js"></script>
 <script>
   const { isEqual } = goEquality;
 

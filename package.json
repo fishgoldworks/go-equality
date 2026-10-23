@@ -1,6 +1,6 @@
 {
   "name": "go-equality",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "Check whether two JavaScript values are equal.",
   "license": "MIT",
